@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../components/layout";
 import { Card, DataTable } from "../components/ui";
+import { QueryBoundary } from "../components/feedback";
 import { apiFetch } from "../lib/apiClient";
 import useAuthStore from "../store/authStore";
 
@@ -32,7 +33,7 @@ export default function CashierDashboardPage() {
     const [redeemMessage, setRedeemMessage] = useState("");
     const [redeemError, setRedeemError] = useState("");
 
-    const { data: recentTxs } = useQuery({
+    const recentQuery = useQuery({
         queryKey: ["cashier-transactions", utorid],
         enabled: Boolean(utorid),
         queryFn: () => apiFetch(`/transactions?limit=5&page=1&createdBy=${utorid}`),
@@ -145,10 +146,10 @@ export default function CashierDashboardPage() {
 
     const recentRows = useMemo(
         () =>
-            (recentTxs?.results ?? [])
+            (recentQuery.data?.results ?? [])
                 .slice()
                 .sort((a, b) => b.id - a.id),
-        [recentTxs],
+        [recentQuery.data],
     );
 
     return (
@@ -181,11 +182,13 @@ export default function CashierDashboardPage() {
                             <span>{txMessage}</span>
                         </div>
                     )}
-                    <form className="space-y-4" onSubmit={handleCreate}>
-                        <div className="form-control">
-                            <label className="label text-sm font-medium">Customer UTORid</label>
+                    <form className="space-y-5" onSubmit={handleCreate}>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-neutral/70 pl-1">
+                                Customer UTORid
+                            </label>
                             <input
-                                className="input input-bordered"
+                                className="input input-bordered w-full rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                                 value={customerUtorid}
                                 onChange={(e) => setCustomerUtorid(e.target.value)}
                                 placeholder="e.g., clive123"
@@ -217,10 +220,12 @@ export default function CashierDashboardPage() {
                         </div>
                         {txType === "purchase" ? (
                             <>
-                                <div className="form-control">
-                                    <label className="label text-sm font-medium">Amount spent (CAD)</label>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-neutral/70 pl-1">
+                                        Amount spent (CAD)
+                                    </label>
                                     <input
-                                        className="input input-bordered"
+                                        className="input input-bordered w-full rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                                         type="number"
                                         min="0"
                                         step="0.01"
@@ -229,10 +234,12 @@ export default function CashierDashboardPage() {
                                         placeholder="e.g., 24.99"
                                     />
                                 </div>
-                                <div className="form-control">
-                                    <label className="label text-sm font-medium">Promotion IDs (comma separated)</label>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-neutral/70 pl-1">
+                                        Promotion IDs (comma separated)
+                                    </label>
                                     <input
-                                        className="input input-bordered"
+                                        className="input input-bordered w-full rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                                         value={promoInput}
                                         onChange={(e) => setPromoInput(e.target.value)}
                                         placeholder="e.g., 1, 4, 5"
@@ -241,20 +248,24 @@ export default function CashierDashboardPage() {
                             </>
                         ) : (
                             <>
-                                <div className="form-control">
-                                    <label className="label text-sm font-medium">Adjustment amount (points)</label>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-neutral/70 pl-1">
+                                        Adjustment amount (points)
+                                    </label>
                                     <input
-                                        className="input input-bordered"
+                                        className="input input-bordered w-full rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                                         type="number"
                                         value={adjustAmount}
                                         onChange={(e) => setAdjustAmount(e.target.value)}
                                         placeholder="e.g., 100 or -50"
                                     />
                                 </div>
-                                <div className="form-control">
-                                    <label className="label text-sm font-medium">Related transaction ID</label>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-neutral/70 pl-1">
+                                        Related transaction ID
+                                    </label>
                                     <input
-                                        className="input input-bordered"
+                                        className="input input-bordered w-full rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                                         type="number"
                                         value={adjustRelated}
                                         onChange={(e) => setAdjustRelated(e.target.value)}
@@ -263,10 +274,12 @@ export default function CashierDashboardPage() {
                                 </div>
                             </>
                         )}
-                        <div className="form-control">
-                            <label className="label text-sm font-medium">Remark (optional)</label>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-neutral/70 pl-1">
+                                Remark (optional)
+                            </label>
                             <textarea
-                                className="textarea textarea-bordered"
+                                className="textarea textarea-bordered w-full rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                                 rows={3}
                                 value={remark}
                                 onChange={(e) => setRemark(e.target.value)}
@@ -293,13 +306,13 @@ export default function CashierDashboardPage() {
                             <span>{redeemMessage}</span>
                         </div>
                     )}
-                    <form className="space-y-4" onSubmit={handleProcess}>
-                        <div className="form-control">
-                            <label className="label text-sm font-medium">
+                    <form className="space-y-5" onSubmit={handleProcess}>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-neutral/70 pl-1">
                                 Redemption transaction ID
                             </label>
                             <input
-                                className="input input-bordered"
+                                className="input input-bordered w-full rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                                 type="number"
                                 value={redemptionId}
                                 onChange={(e) => setRedemptionId(e.target.value)}
@@ -322,11 +335,16 @@ export default function CashierDashboardPage() {
             </div>
 
             <Card title="Recent transactions you recorded">
-                <DataTable
-                    columns={TX_COLUMNS}
-                    data={recentRows}
-                    emptyMessage="No transactions yet."
-                />
+                <QueryBoundary
+                    query={recentQuery}
+                    loadingLabel="Loading your recent transactions…"
+                >
+                    <DataTable
+                        columns={TX_COLUMNS}
+                        data={recentRows}
+                        emptyMessage="No transactions yet."
+                    />
+                </QueryBoundary>
             </Card>
         </AppShell>
     );

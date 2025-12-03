@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../components/layout";
 import { Card, FilterBar, DataTable } from "../components/ui";
+import { QueryBoundary } from "../components/feedback";
 import { apiFetch } from "../lib/apiClient";
 import { formatDateTime } from "../lib/date";
 
@@ -17,6 +18,13 @@ const emptyEventForm = {
     points: "",
 };
 
+const baseInputClass =
+    "input input-bordered w-full rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200";
+const textareaClass =
+    "textarea textarea-bordered w-full rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200";
+const smallInputClass =
+    "input input-bordered input-sm w-full rounded-2xl border-2 border-brand-200 bg-white px-3 py-1.5 text-sm text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200";
+
 export default function ManagerEventsPage() {
     const queryClient = useQueryClient();
     const [page, setPage] = useState(1);
@@ -29,7 +37,7 @@ export default function ManagerEventsPage() {
     const [awardPoints, setAwardPoints] = useState("");
     const [editValues, setEditValues] = useState(null);
 
-    const { data, isLoading, isError, error } = useQuery({
+    const listQuery = useQuery({
         queryKey: ["manager-events", { page, search }],
         queryFn: () => {
             const params = new URLSearchParams();
@@ -41,6 +49,7 @@ export default function ManagerEventsPage() {
         },
         keepPreviousData: true,
     });
+    const { data, isLoading, isError, error } = listQuery;
 
     const selectedEvent = useQuery({
         queryKey: ["manager-event-detail", selectedEventId],
@@ -251,48 +260,48 @@ export default function ManagerEventsPage() {
             <Card title="Create new event">
                 <form className="grid gap-4 md:grid-cols-2" onSubmit={handleCreate}>
                     <input
-                        className="input input-bordered"
+                        className={baseInputClass}
                         placeholder="Name"
                         value={formValues.name}
                         onChange={(e) => setFormValues({ ...formValues, name: e.target.value })}
                         required
                     />
                     <input
-                        className="input input-bordered"
+                        className={baseInputClass}
                         placeholder="Location"
                         value={formValues.location}
                         onChange={(e) => setFormValues({ ...formValues, location: e.target.value })}
                         required
                     />
                     <input
-                        className="input input-bordered md:col-span-2"
+                        className={`${baseInputClass} md:col-span-2`}
                         placeholder="Description"
                         value={formValues.description}
                         onChange={(e) => setFormValues({ ...formValues, description: e.target.value })}
                     />
                     <input
                         type="datetime-local"
-                        className="input input-bordered"
+                        className={baseInputClass}
                         value={formValues.startTime}
                         onChange={(e) => setFormValues({ ...formValues, startTime: e.target.value })}
                         required
                     />
                     <input
                         type="datetime-local"
-                        className="input input-bordered"
+                        className={baseInputClass}
                         value={formValues.endTime}
                         onChange={(e) => setFormValues({ ...formValues, endTime: e.target.value })}
                         required
                     />
                     <input
-                        className="input input-bordered"
+                        className={baseInputClass}
                         type="number"
                         placeholder="Capacity (optional)"
                         value={formValues.capacity}
                         onChange={(e) => setFormValues({ ...formValues, capacity: e.target.value })}
                     />
                     <input
-                        className="input input-bordered"
+                        className={baseInputClass}
                         type="number"
                         placeholder="Total points"
                         value={formValues.points}
@@ -312,7 +321,7 @@ export default function ManagerEventsPage() {
             <Card title="Events list">
                 <FilterBar onSubmit={handleListFilter}>
                     <input
-                        className="input input-bordered input-sm"
+                        className={`${smallInputClass} md:w-64`}
                         placeholder="Search by name"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
@@ -321,25 +330,16 @@ export default function ManagerEventsPage() {
                         Apply
                     </button>
                 </FilterBar>
-                {isLoading ? (
-                    <div className="flex justify-center py-8">
-                        <span className="loading loading-spinner text-primary" />
-                    </div>
-                ) : isError ? (
-                    <p className="text-error">{error?.message}</p>
-                ) : (
+                <QueryBoundary query={listQuery} loadingLabel="Loading events…">
                     <DataTable columns={columns} data={data?.results ?? []} />
-                )}
+                </QueryBoundary>
             </Card>
 
             {selectedEventId && (
                 <Card title="Event details">
-                    {selectedEvent.isLoading ? (
-                        <div className="flex justify-center py-4">
-                            <span className="loading loading-spinner text-primary" />
-                        </div>
-                    ) : selectedEvent.data ? (
-                        <div className="space-y-6">
+                    <QueryBoundary query={selectedEvent} loadingLabel="Loading event…">
+                        {selectedEvent.data ? (
+                            <div className="space-y-6">
                             <div className="grid gap-4 md:grid-cols-2">
                                 <div>
                                     <p className="text-xs text-neutral/60">Name</p>
@@ -377,19 +377,19 @@ export default function ManagerEventsPage() {
                             {editValues && (
                                 <form className="grid gap-3 md:grid-cols-2" onSubmit={handleEditSubmit}>
                                     <input
-                                        className="input input-bordered"
+                                        className={baseInputClass}
                                         value={editValues.name}
                                         onChange={(e) => setEditValues({ ...editValues, name: e.target.value })}
                                         placeholder="Name"
                                     />
                                     <input
-                                        className="input input-bordered"
+                                        className={baseInputClass}
                                         value={editValues.location}
                                         onChange={(e) => setEditValues({ ...editValues, location: e.target.value })}
                                         placeholder="Location"
                                     />
                                     <textarea
-                                        className="textarea textarea-bordered md:col-span-2"
+                                        className={`${textareaClass} md:col-span-2`}
                                         rows={3}
                                         value={editValues.description}
                                         onChange={(e) => setEditValues({ ...editValues, description: e.target.value })}
@@ -397,18 +397,18 @@ export default function ManagerEventsPage() {
                                     />
                                     <input
                                         type="datetime-local"
-                                        className="input input-bordered"
+                                        className={baseInputClass}
                                         value={editValues.startTime}
                                         onChange={(e) => setEditValues({ ...editValues, startTime: e.target.value })}
                                     />
                                     <input
                                         type="datetime-local"
-                                        className="input input-bordered"
+                                        className={baseInputClass}
                                         value={editValues.endTime}
                                         onChange={(e) => setEditValues({ ...editValues, endTime: e.target.value })}
                                     />
                                     <input
-                                        className="input input-bordered"
+                                        className={baseInputClass}
                                         type="number"
                                         value={editValues.capacity}
                                         onChange={(e) => setEditValues({ ...editValues, capacity: e.target.value })}
@@ -469,7 +469,7 @@ export default function ManagerEventsPage() {
                                     }}
                                 >
                                     <input
-                                        className="input input-bordered input-sm"
+                                        className={smallInputClass}
                                         value={organizerUtorid}
                                         onChange={(e) => setOrganizerUtorid(e.target.value)}
                                         placeholder="UTORid"
@@ -489,7 +489,7 @@ export default function ManagerEventsPage() {
                                     }}
                                 >
                                     <input
-                                        className="input input-bordered input-sm"
+                                        className={smallInputClass}
                                         value={guestUtorid}
                                         onChange={(e) => setGuestUtorid(e.target.value)}
                                         placeholder="UTORid"
@@ -516,13 +516,13 @@ export default function ManagerEventsPage() {
                                     }}
                                 >
                                     <input
-                                        className="input input-bordered"
+                                        className={baseInputClass}
                                         placeholder="Guest UTORid (leave empty for all)"
                                         value={awardUtorid}
                                         onChange={(e) => setAwardUtorid(e.target.value)}
                                     />
                                     <input
-                                        className="input input-bordered"
+                                        className={baseInputClass}
                                         type="number"
                                         placeholder="Points"
                                         value={awardPoints}
@@ -546,10 +546,11 @@ export default function ManagerEventsPage() {
                                     Award to all guests
                                 </button>
                             </Card>
-                        </div>
-                    ) : (
-                        <p>No event selected.</p>
-                    )}
+                            </div>
+                        ) : (
+                            <p>No event selected.</p>
+                        )}
+                    </QueryBoundary>
                 </Card>
             )}
         </AppShell>

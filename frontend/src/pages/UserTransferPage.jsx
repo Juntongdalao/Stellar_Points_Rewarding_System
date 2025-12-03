@@ -93,47 +93,45 @@ export default function UserTransferPage() {
                         <span>{successMessage}</span>
                     </div>
                 )}
-                <form className="grid gap-4" onSubmit={handleSubmit}>
-                    <div className="form-control">
-                        <label htmlFor="recipientId" className="label">
-                            <span className="label-text">Recipient user ID</span>
+                <form className="grid gap-5" onSubmit={handleSubmit}>
+                    <div className="space-y-2">
+                        <label htmlFor="recipientId" className="text-sm font-medium text-neutral/70 pl-1">
+                            Recipient user ID
                         </label>
                         <input
                             id="recipientId"
                             type="number"
                             min="1"
-                            className="input input-bordered"
+                            className="input input-bordered w-full rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                             value={recipientId}
                             onChange={(e) => setRecipientId(e.target.value)}
                             placeholder="Numeric user ID (e.g., 3)"
                         />
-                        <label className="label">
-                            <span className="label-text-alt text-base-content/60">
-                                Use the numeric internal ID shown to managers.
-                            </span>
-                        </label>
+                        <p className="text-xs text-base-content/60 pl-1">
+                            Use the numeric internal ID shown to managers.
+                        </p>
                     </div>
-                    <div className="form-control">
-                        <label htmlFor="amount" className="label">
-                            <span className="label-text">Amount of points</span>
+                    <div className="space-y-2">
+                        <label htmlFor="amount" className="text-sm font-medium text-neutral/70 pl-1">
+                            Amount of points
                         </label>
                         <input
                             id="amount"
                             type="number"
                             min="1"
-                            className="input input-bordered"
+                            className="input input-bordered w-full rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
                             placeholder="e.g., 100"
                         />
                     </div>
-                    <div className="form-control">
-                        <label htmlFor="note" className="label">
-                            <span className="label-text">Note (optional)</span>
+                    <div className="space-y-2">
+                        <label htmlFor="note" className="text-sm font-medium text-neutral/70 pl-1">
+                            Note (optional)
                         </label>
                         <textarea
                             id="note"
-                            className="textarea textarea-bordered"
+                            className="textarea textarea-bordered w-full rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                             rows={3}
                             value={note}
                             onChange={(e) => setNote(e.target.value)}

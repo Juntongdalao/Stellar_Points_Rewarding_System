@@ -43,3 +43,10 @@ FrontEnd TODO:
   6. Superuser Tools
       - Extend Manager Users page or add a separate view where superusers can promote/demote managers and fellow superusers while respecting backend constraints;
         include UI cues showing suspicious flags and prevent promoting suspicious users to cashier per backend rules.
+  7. Cross-cutting Enhancements
+      - Navigation: reorganize Navbar into a collapsible drawer on mobile (DaisyUI drawer component) to keep it responsive; include a role switcher and quick links
+        grouped by capability.
+      - Error/loading UX: create reusable components (<QueryBoundary>, <InlineSpinner>, <ErrorBanner>) so every page handles React Query states consistently.
+      - Utilize useMemo/useCallback for derived data (filtered lists, computed stats) and event handlers inside large tables/forms to keep renders fast on mobile.
+      - Ensure every list view consumes pagination metadata from the backend, and consider infinite scroll for mobile (React Query’s fetchNextPage) where
+        applicable.

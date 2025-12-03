@@ -82,29 +82,29 @@ export default function UserRedeemPage() {
                         <span>{message}</span>
                     </div>
                 )}
-                <form className="grid gap-4" onSubmit={handleSubmit}>
-                    <div className="form-control">
-                        <label htmlFor="amount" className="label">
-                            <span className="label-text">Points to redeem</span>
+                <form className="grid gap-5" onSubmit={handleSubmit}>
+                    <div className="space-y-2">
+                        <label htmlFor="amount" className="text-sm font-medium text-neutral/70 pl-1">
+                            Points to redeem
                         </label>
                         <input
                             id="amount"
                             type="number"
                             min={1}
-                            className="input input-bordered"
+                            className="input input-bordered w-full rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
                             placeholder="e.g., 500"
                         />
                     </div>
-                    <div className="form-control">
-                        <label htmlFor="remark" className="label">
-                            <span className="label-text">Note (optional)</span>
+                    <div className="space-y-2">
+                        <label htmlFor="remark" className="text-sm font-medium text-neutral/70 pl-1">
+                            Note (optional)
                         </label>
                         <textarea
                             id="remark"
                             rows={3}
-                            className="textarea textarea-bordered"
+                            className="textarea textarea-bordered w-full rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                             value={remark}
                             onChange={(e) => setRemark(e.target.value)}
                             placeholder="Optional note for the cashier..."

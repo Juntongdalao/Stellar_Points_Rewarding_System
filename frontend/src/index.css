@@ -29,9 +29,10 @@
     @apply text-primary underline-offset-4 transition hover:text-brand-500;
   }
 
-  .input,
-  .textarea,
-  .select {
-    @apply bg-surface-50/90 text-neutral focus:bg-white focus:border-brand-200 focus:ring-2 focus:ring-brand-100;
-  }
+}
+
+.form-control.standalone .input,
+.form-control.standalone .textarea,
+.form-control.standalone .select {
+  @apply bg-white border border-brand-200 text-neutral px-3 py-2 focus:bg-white focus:border-brand-400 focus:ring-1 focus:ring-brand-100;
 }

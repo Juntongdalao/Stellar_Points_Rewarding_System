@@ -225,18 +225,20 @@ router.get('/transactions', authenticateToken, async (req, res) => {
     if (name) {
         where.user = {
             OR: [
-                {utorid: {contains: String(name), mode: 'insensitive'}},
-                {name: {contains: String(name), mode: 'insensitive'}},
+                {utorid: {contains: String(name)}},
+                {name: {contains: String(name)}},
             ]
         };
     }
     if (createdBy || (!isManagerPlus && role === 'cashier')) {
-        const target = createdBy ?? req.user.utorid;
-        where.createdBy = {
-            utorid: createdBy
-                ? { contains: String(target), mode: 'insensitive' }
-                : { equals: String(target), mode: 'insensitive' }
-        };
+        const target = String(createdBy ?? req.user.utorid);
+        if (createdBy) {
+            where.createdBy = {
+                utorid: { contains: target },
+            };
+        } else {
+            where.createdBy = { utorid: target };
+        }
     }
     if (suspicious !== undefined) {
         where.suspicious = String(suspicious) === 'true';

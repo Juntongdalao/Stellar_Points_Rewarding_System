@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../components/layout";
 import { Card, DataTable, FilterBar } from "../components/ui";
+import { QueryBoundary } from "../components/feedback";
 import { apiFetch } from "../lib/apiClient";
 import { formatDateTime } from "../lib/date";
 
@@ -26,7 +27,7 @@ export default function ManagerPromotionsPage() {
     const [typeFilter, setTypeFilter] = useState("");
     const [formState, setFormState] = useState(initialForm);
 
-    const { data, isLoading, isError, error } = useQuery({
+    const promotionsQuery = useQuery({
         queryKey: ["manager-promotions", { page, search, typeFilter }],
         queryFn: () => {
             const params = new URLSearchParams();
@@ -38,6 +39,7 @@ export default function ManagerPromotionsPage() {
         },
         keepPreviousData: true,
     });
+    const { data, isLoading, isError, error } = promotionsQuery;
 
     const createMutation = useMutation({
         mutationFn: (payload) =>
@@ -156,19 +158,19 @@ export default function ManagerPromotionsPage() {
         >
             <Card>
                 <FilterBar onSubmit={handleFilterSubmit}>
-                    <div className="form-control">
-                        <label className="label text-xs uppercase text-neutral/70">Search</label>
+                    <div className="space-y-2">
+                        <label className="text-xs uppercase text-neutral/70 pl-1">Search</label>
                         <input
-                            className="input input-bordered input-sm"
+                            className="input input-bordered input-sm rounded-2xl border border-brand-200 bg-white px-3 py-2 text-sm text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Name"
                         />
                     </div>
-                    <div className="form-control">
-                        <label className="label text-xs uppercase text-neutral/70">Type</label>
+                    <div className="space-y-2">
+                        <label className="text-xs uppercase text-neutral/70 pl-1">Type</label>
                         <select
-                            className="select select-bordered select-sm"
+                            className="select select-bordered select-sm rounded-2xl border border-brand-200 bg-white px-3 py-2 text-sm text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                             value={typeFilter}
                             onChange={(e) => setTypeFilter(e.target.value)}
                         >
@@ -185,19 +187,19 @@ export default function ManagerPromotionsPage() {
 
             <Card title="Promotion form">
                 <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
-                    <div className="form-control">
-                        <label className="label text-sm font-medium">Name</label>
+                    <div className="space-y-2">
+                        <label className="block text-sm font-medium text-neutral/70 pl-1">Name</label>
                         <input
-                            className="input input-bordered"
+                            className="input input-bordered rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                             value={formState.name}
                             onChange={(e) => setFormState({ ...formState, name: e.target.value })}
                             required
                         />
                     </div>
-                    <div className="form-control">
-                        <label className="label text-sm font-medium">Type</label>
+                    <div className="space-y-2">
+                        <label className="block text-sm font-medium text-neutral/70 pl-1">Type</label>
                         <select
-                            className="select select-bordered"
+                            className="select select-bordered rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                             value={formState.type}
                             onChange={(e) => setFormState({ ...formState, type: e.target.value })}
                         >
@@ -205,49 +207,49 @@ export default function ManagerPromotionsPage() {
                             <option value="onetime">One-time</option>
                         </select>
                     </div>
-                    <div className="form-control md:col-span-2">
-                        <label className="label text-sm font-medium">Description</label>
+                    <div className="md:col-span-2 space-y-2">
+                        <label className="block text-sm font-medium text-neutral/70 pl-1">Description</label>
                         <textarea
-                            className="textarea textarea-bordered"
+                            className="textarea textarea-bordered rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                             rows={3}
                             value={formState.description}
                             onChange={(e) => setFormState({ ...formState, description: e.target.value })}
                         />
                     </div>
-                    <div className="form-control">
-                        <label className="label text-sm font-medium">Start time</label>
+                    <div className="space-y-2">
+                        <label className="block text-sm font-medium text-neutral/70 pl-1">Start time</label>
                         <input
                             type="datetime-local"
-                            className="input input-bordered"
+                            className="input input-bordered rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                             value={formState.startTime}
                             onChange={(e) => setFormState({ ...formState, startTime: e.target.value })}
                             required
                         />
                     </div>
-                    <div className="form-control">
-                        <label className="label text-sm font-medium">End time</label>
+                    <div className="space-y-2">
+                        <label className="block text-sm font-medium text-neutral/70 pl-1">End time</label>
                         <input
                             type="datetime-local"
-                            className="input input-bordered"
+                            className="input input-bordered rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                             value={formState.endTime}
                             onChange={(e) => setFormState({ ...formState, endTime: e.target.value })}
                             required
                         />
                     </div>
-                    <div className="form-control">
-                        <label className="label text-sm font-medium">Min spending (optional)</label>
+                    <div className="space-y-2">
+                        <label className="block text-sm font-medium text-neutral/70 pl-1">Min spending (optional)</label>
                         <input
-                            className="input input-bordered"
+                            className="input input-bordered rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                             type="number"
                             value={formState.minSpending}
                             onChange={(e) => setFormState({ ...formState, minSpending: e.target.value })}
                             placeholder="e.g., 20"
                         />
                     </div>
-                    <div className="form-control">
-                        <label className="label text-sm font-medium">Rate bonus (optional)</label>
+                    <div className="space-y-2">
+                        <label className="block text-sm font-medium text-neutral/70 pl-1">Rate bonus (optional)</label>
                         <input
-                            className="input input-bordered"
+                            className="input input-bordered rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                             type="number"
                             step="0.01"
                             value={formState.rate}
@@ -255,10 +257,10 @@ export default function ManagerPromotionsPage() {
                             placeholder="e.g., 0.05"
                         />
                     </div>
-                    <div className="form-control">
-                        <label className="label text-sm font-medium">Points bonus (optional)</label>
+                    <div className="space-y-2">
+                        <label className="block text-sm font-medium text-neutral/70 pl-1">Points bonus (optional)</label>
                         <input
-                            className="input input-bordered"
+                            className="input input-bordered rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                             type="number"
                             value={formState.points}
                             onChange={(e) => setFormState({ ...formState, points: e.target.value })}
@@ -287,15 +289,9 @@ export default function ManagerPromotionsPage() {
             </Card>
 
             <Card title="Promotions">
-                {isLoading ? (
-                    <div className="flex justify-center py-8">
-                        <span className="loading loading-spinner text-primary" />
-                    </div>
-                ) : isError ? (
-                    <p className="text-error">{error?.message}</p>
-                ) : (
+                <QueryBoundary query={promotionsQuery} loadingLabel="Loading promotions…">
                     <DataTable columns={columns} data={data?.results ?? []} />
-                )}
+                </QueryBoundary>
                 {data && data.count > PAGE_SIZE && (
                     <div className="mt-4 flex items-center justify-between">
                         <button

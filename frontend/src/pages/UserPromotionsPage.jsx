@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "../components/layout";
 import { Card, FilterBar } from "../components/ui";
+import { QueryBoundary } from "../components/feedback";
 import { apiFetch } from "../lib/apiClient";
 import { formatDateTime } from "../lib/date";
 
@@ -11,7 +12,7 @@ export default function UserPromotionsPage() {
     const [typeFilter, setTypeFilter] = useState("");
     const [page, setPage] = useState(1);
 
-    const { data, isLoading, isError, error } = useQuery({
+    const promosQuery = useQuery({
         queryKey: ["promotions", typeFilter, page],
         queryFn: () => {
             const params = new URLSearchParams();
@@ -22,6 +23,7 @@ export default function UserPromotionsPage() {
         },
         keepPreviousData: true,
     });
+    const { data, isLoading, isError, error } = promosQuery;
 
     const total = data?.count ?? 0;
     const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -62,52 +64,48 @@ export default function UserPromotionsPage() {
             </Card>
 
             <Card>
-                {isLoading ? (
-                    <div className="flex justify-center py-8">
-                        <span className="loading loading-spinner text-primary" />
-                    </div>
-                ) : isError ? (
-                    <p className="text-error">{error?.message}</p>
-                ) : promotions.length === 0 ? (
-                    <p className="text-base-content/70">No promotions available right now.</p>
-                ) : (
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {promotions.map((promo) => (
-                            <article
-                                key={promo.id}
-                                className="rounded-2xl border border-base-200 bg-base-100 p-5 shadow-card"
-                            >
-                                <div className="flex items-start justify-between">
-                                    <h2 className="text-lg font-semibold">{promo.name}</h2>
-                                    <span className="badge badge-soft capitalize">{promo.type}</span>
-                                </div>
-                                <p className="mt-2 text-sm text-base-content/70">
-                                    Ends {formatDateTime(promo.endTime)}
-                                </p>
-                                <dl className="mt-4 space-y-2 text-sm">
-                                    {promo.points != null && (
-                                        <div className="flex justify-between">
-                                            <dt className="text-base-content/70">Bonus points</dt>
-                                            <dd className="font-semibold">{promo.points}</dd>
-                                        </div>
-                                    )}
-                                    {promo.rate != null && (
-                                        <div className="flex justify-between">
-                                            <dt className="text-base-content/70">Rate bonus</dt>
-                                            <dd className="font-semibold">{promo.rate}</dd>
-                                        </div>
-                                    )}
-                                    {promo.minSpending != null && (
-                                        <div className="flex justify-between">
-                                            <dt className="text-base-content/70">Min spending</dt>
-                                            <dd className="font-semibold">${promo.minSpending}</dd>
-                                        </div>
-                                    )}
-                                </dl>
-                            </article>
-                        ))}
-                    </div>
-                )}
+                <QueryBoundary query={promosQuery} loadingLabel="Loading promotions…">
+                    {promotions.length === 0 ? (
+                        <p className="text-base-content/70">No promotions available right now.</p>
+                    ) : (
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {promotions.map((promo) => (
+                                <article
+                                    key={promo.id}
+                                    className="rounded-2xl border border-base-200 bg-base-100 p-5 shadow-card"
+                                >
+                                    <div className="flex items-start justify-between">
+                                        <h2 className="text-lg font-semibold">{promo.name}</h2>
+                                        <span className="badge badge-soft capitalize">{promo.type}</span>
+                                    </div>
+                                    <p className="mt-2 text-sm text-base-content/70">
+                                        Ends {formatDateTime(promo.endTime)}
+                                    </p>
+                                    <dl className="mt-4 space-y-2 text-sm">
+                                        {promo.points != null && (
+                                            <div className="flex justify-between">
+                                                <dt className="text-base-content/70">Bonus points</dt>
+                                                <dd className="font-semibold">{promo.points}</dd>
+                                            </div>
+                                        )}
+                                        {promo.rate != null && (
+                                            <div className="flex justify-between">
+                                                <dt className="text-base-content/70">Rate bonus</dt>
+                                                <dd className="font-semibold">{promo.rate}</dd>
+                                            </div>
+                                        )}
+                                        {promo.minSpending != null && (
+                                            <div className="flex justify-between">
+                                                <dt className="text-base-content/70">Min spending</dt>
+                                                <dd className="font-semibold">${promo.minSpending}</dd>
+                                            </div>
+                                        )}
+                                    </dl>
+                                </article>
+                            ))}
+                        </div>
+                    )}
+                </QueryBoundary>
             </Card>
 
             {total > PAGE_SIZE && (

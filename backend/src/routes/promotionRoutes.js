@@ -95,7 +95,7 @@ router.get('/promotions', authenticateToken, requireRole('regular'), async (req,
         }
         const where = {};
         if (name) {
-            where.name = {contains: String(name), mode: 'insensitive'};
+            where.name = {contains: String(name)};
         }
         if (type) {
             where.type = type;

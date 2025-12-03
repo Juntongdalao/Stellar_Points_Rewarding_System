@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../components/layout";
 import { Card, DataTable, FilterBar } from "../components/ui";
+import { QueryBoundary } from "../components/feedback";
 import { apiFetch } from "../lib/apiClient";
 import useAuthStore from "../store/authStore";
 
@@ -21,7 +22,7 @@ export default function ManagerUsersPage() {
     const hasSuperPowers = useAuthStore((s) => s.hasRole("superuser"));
     const currentUserId = useAuthStore((s) => s.user?.id ?? null);
 
-    const { data, isLoading, isError, error, isFetching } = useQuery({
+    const userQuery = useQuery({
         queryKey: [
             "manager-users",
             { page, searchName, roleFilter, verifiedFilter, activatedFilter },
@@ -39,6 +40,7 @@ export default function ManagerUsersPage() {
         keepPreviousData: true,
     });
 
+    const { data, isLoading, isError, error, isFetching } = userQuery;
     const total = data?.count ?? 0;
     const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
     const users = data?.results ?? [];
@@ -235,21 +237,21 @@ export default function ManagerUsersPage() {
 
             <Card title="Filters">
                 <FilterBar onSubmit={handleFilters} onReset={handleResetFilters}>
-                    <div className="form-control flex-1 min-w-[180px]">
-                        <label className="label text-xs uppercase text-neutral/60">
+                    <div className="flex-1 min-w-[180px] space-y-2">
+                        <label className="text-xs uppercase text-neutral/60 pl-1">
                             Search (name or UTORid)
                         </label>
                         <input
-                            className="input input-bordered input-sm"
+                            className="input input-bordered input-sm rounded-2xl border border-brand-200 bg-white px-3 py-2 text-sm text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                             placeholder="e.g., super123"
                             value={searchName}
                             onChange={(e) => setSearchName(e.target.value)}
                         />
                     </div>
-                    <div className="form-control w-40">
-                        <label className="label text-xs uppercase text-neutral/60">Role</label>
+                    <div className="w-40 space-y-2">
+                        <label className="text-xs uppercase text-neutral/60 pl-1">Role</label>
                         <select
-                            className="select select-bordered select-sm"
+                            className="select select-bordered select-sm rounded-2xl border border-brand-200 bg-white px-3 py-2 text-sm text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                             value={roleFilter}
                             onChange={(e) => setRoleFilter(e.target.value)}
                         >
@@ -261,12 +263,12 @@ export default function ManagerUsersPage() {
                             ))}
                         </select>
                     </div>
-                    <div className="form-control w-40">
-                        <label className="label text-xs uppercase text-neutral/60">
+                    <div className="w-40 space-y-2">
+                        <label className="text-xs uppercase text-neutral/60 pl-1">
                             Verified
                         </label>
                         <select
-                            className="select select-bordered select-sm"
+                            className="select select-bordered select-sm rounded-2xl border border-brand-200 bg-white px-3 py-2 text-sm text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                             value={verifiedFilter}
                             onChange={(e) => setVerifiedFilter(e.target.value)}
                         >
@@ -275,12 +277,12 @@ export default function ManagerUsersPage() {
                             <option value="false">Unverified</option>
                         </select>
                     </div>
-                    <div className="form-control w-40">
-                        <label className="label text-xs uppercase text-neutral/60">
+                    <div className="w-40 space-y-2">
+                        <label className="text-xs uppercase text-neutral/60 pl-1">
                             Activated
                         </label>
                         <select
-                            className="select select-bordered select-sm"
+                            className="select select-bordered select-sm rounded-2xl border border-brand-200 bg-white px-3 py-2 text-sm text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
                             value={activatedFilter}
                             onChange={(e) => setActivatedFilter(e.target.value)}
                         >
@@ -308,15 +310,7 @@ export default function ManagerUsersPage() {
                     ) : undefined
                 }
             >
-                {isLoading && (
-                    <div className="py-10 text-center text-neutral/60">Loading users…</div>
-                )}
-                {isError && (
-                    <div className="py-4 text-center text-error">
-                        {error?.message || "Unable to load users."}
-                    </div>
-                )}
-                {!isLoading && !isError && (
+                <QueryBoundary query={userQuery} loadingLabel="Loading users…">
                     <>
                         <DataTable
                             data={users}
@@ -347,7 +341,7 @@ export default function ManagerUsersPage() {
                             </div>
                         )}
                     </>
-                )}
+                </QueryBoundary>
             </Card>
         </AppShell>
     );

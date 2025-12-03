@@ -6,6 +6,9 @@ import { Card, DataTable } from "../components/ui";
 import { apiFetch } from "../lib/apiClient";
 import { formatDateTime } from "../lib/date";
 
+const managerInputClass =
+    "input input-bordered w-full rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-neutral focus:border-brand-500 focus:ring-1 focus:ring-brand-200";
+
 export default function ManagerTransactionDetailPage() {
     const { transactionId } = useParams();
     const queryClient = useQueryClient();
@@ -220,14 +223,14 @@ export default function ManagerTransactionDetailPage() {
                         <DataTable columns={adjustmentColumns} data={adjustmentRows} />
                         <form className="grid gap-3 md:grid-cols-2" onSubmit={handleAdjustmentSubmit}>
                             <input
-                                className="input input-bordered"
+                                className={managerInputClass}
                                 type="number"
                                 placeholder="Adjustment amount"
                                 value={adjustAmount}
                                 onChange={(e) => setAdjustAmount(e.target.value)}
                             />
                             <input
-                                className="input input-bordered"
+                                className={managerInputClass}
                                 placeholder="Remark (optional)"
                                 value={adjustRemark}
                                 onChange={(e) => setAdjustRemark(e.target.value)}

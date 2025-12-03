@@ -18,7 +18,7 @@ export default function Card({
                 <header className="flex flex-col gap-4 border-b border-base-200/70 px-6 py-4 md:flex-row md:items-center md:justify-between">
                     <div>
                         {title && (
-                            <h2 className="text-lg font-semibold text-base-content">
+                            <h2 className="text-lg font-semibold text-neutral">
                                 {title}
                             </h2>
                         )}

@@ -76,10 +76,10 @@ router.get('/events', authenticateToken, requireRole('regular'), async (req, res
         const now = new Date();
         const where = {};
         if (name) {
-            where.name = {contains: String(name), mode: 'insensitive'};
+            where.name = {contains: String(name)};
         }
         if (location) {
-            where.location = {contains: String(location), mode: 'insensitive'};
+            where.location = {contains: String(location)};
         }
         if (!isManager(req.user)) {
             where.published = true;
@@ -147,10 +147,10 @@ router.get('/organizer/events', authenticateToken, requireRole('regular'), async
             organizers: { some: { userId: req.user.id } },
         };
         if (name) {
-            where.name = { contains: String(name), mode: 'insensitive' };
+            where.name = { contains: String(name) };
         }
         if (location) {
-            where.location = { contains: String(location), mode: 'insensitive' };
+            where.location = { contains: String(location) };
         }
         const [count, events] = await Promise.all([
             prisma.event.count({ where }),

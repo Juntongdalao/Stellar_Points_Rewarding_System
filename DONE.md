@@ -200,3 +200,14 @@ Frontend & Backend Step 6 (Superuser Tools + Seeds + Cypress)
   - Cypress tests were not executed here because they require both dev servers running; follow the INSTALL instructions to start backend/frontend, then run npm
     run test:e2e.
 
+Done step 7:
+ - Navigation: frontend/src/components/Navbar.jsx:1 was rebuilt into a DaisyUI drawer + desktop nav. Links are grouped by capability (regular,
+    cashier, manager, organizer), the role switcher/logout stay fixed, and the mobile drawer closes on selection to prevent overlaps.
+  - Feedback components: Added frontend/src/components/feedback/InlineSpinner.jsx:1, ErrorBanner.jsx:1, QueryBoundary.jsx:1, and updated feedback/
+    index.js:1 so every page can share consistent loading/error UI.
+  - Manager surfaces now wrap their React Query states with QueryBoundary (frontend/src/pages/ManagerUsersPage.jsx:5, ManagerPromotionsPage.jsx:1,
+    ManagerEventsPage.jsx:1, ManagerTransactionsPage.jsx:1, plus ManagerTransactionDetailPage.jsx:1 forms), eliminating ad-hoc spinners.
+  - Regular/cashier pages received the same treatment—MyTransactionsPage.jsx:1, UserPromotionsPage.jsx:1, UserEventsPage.jsx:1, and
+    CashierDashboardPage.jsx:1 all reuse the new components and memoize derived columns/handlers where needed, keeping renders smooth on mobile.
+  - Pagination upgrades: list views still consume backend counts, and frontend/src/pages/UserEventsPage.jsx:1 moved to useInfiniteQuery +
+    IntersectionObserver to provide infinite scroll while respecting the API metadata.

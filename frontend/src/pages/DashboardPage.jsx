@@ -64,7 +64,7 @@ export default function DashboardPage() {
 
             <div className="grid gap-6 lg:grid-cols-2">
                 <Card
-                    title="Recent transactions"
+                    title={<span className="text-base-content/80">Recent transactions</span>}
                     actions={<Link to="/me/transactions" className="btn btn-link btn-sm">View all</Link>}
                 >
                     {txLoading ? (
@@ -94,7 +94,7 @@ export default function DashboardPage() {
                 </Card>
 
                 <Card
-                    title="Upcoming events"
+                    title={<span className="text-base-content/80">Upcoming events</span>}
                     actions={<Link to="/events" className="btn btn-link btn-sm">Browse events</Link>}
                 >
                     {eventsLoading ? (
@@ -119,7 +119,7 @@ export default function DashboardPage() {
             </div>
 
             <Card
-                title="Active promotions"
+                title={<span className="text-base-content/80">Active promotions</span>}
                 actions={<Link to="/me/promotions" className="btn btn-link btn-sm">View all</Link>}
             >
                 {promosLoading ? (
