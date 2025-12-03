@@ -1,6 +1,52 @@
-# This text file should explain how to deploy your website.
+Stellar Points Deployment & Setup
+=================================
 
-# You should write detailed description on:
+Prerequisites
+-------------
+1. **Node.js 22.20.0** (matching the CSC309 VM image). Use `nvm install 22.20.0 && nvm use 22.20.0`.
+2. **SQLite 3** (bundled with macOS/Linux, otherwise install via Homebrew/apt).  
+3. **npm 10+** (bundled with Node 22).  
+4. Optional: **PM2** or another process manager if you are hosting the backend long‑running process.  
 
-# 1. All the packages you need to install
-# 2. How to configure various servers (e.g., Nginx, Apache, etc)
+Backend (Express + Prisma)
+--------------------------
+1. `cd backend`
+2. Copy `.env.example` → `.env` (or set `JWT_SECRET`, `PORT`, etc.). The default dev server runs on `http://localhost:3000`.
+3. Install dependencies: `npm install`
+4. Generate / reset the SQLite database and load demo data required by the rubric:  
+   ```bash
+   npm run seed
+   ```
+   This creates 15 demo accounts (superuser, managers, cashiers, organizers, suspicious users), 5 events, 5 promotions, and 30+ transactions so TAs can immediately test pagination-heavy pages.  
+5. Start the API: `npm run dev`
+
+Frontend (Vite + React + DaisyUI)
+---------------------------------
+1. `cd frontend`
+2. Install dependencies: `npm install` (requires Node 20.19+ or 22.12+ as per Vite’s engines).
+3. Copy `.env.example` → `.env` if you want to override `VITE_API_BASE_URL`. By default the frontend talks to `http://localhost:3000`.
+4. Development server: `npm run dev` (served at `http://localhost:5173`).
+5. Production build: `npm run build` → deploy the `dist/` contents (e.g., Netlify, Vercel, or a static bucket proxied behind Nginx). Point the backend’s `cors` middleware to the deployed origin.
+
+End-to-End Smoke Tests
+----------------------
+1. Ensure both backend (`npm run dev` in `/backend`) and frontend (`npm run dev` in `/frontend`) are running locally.
+2. From `frontend/`, run Cypress:
+   ```bash
+   npm run test:e2e        # headless
+   npm run test:e2e:open   # headed Test Runner
+   ```
+   Cypress logs in through the API, verifies auth gating, and exercises the organizer “award all guests” flow.  
+   Use env vars (`CYPRESS_BASE_URL`, `CYPRESS_API_URL`, etc.) if your servers are not running on the defaults.
+
+Deployment Notes
+----------------
+* **Backend**: Any Node 22 host works (Render, Fly.io, Railway, etc.). Point the reverse proxy at `PORT` (default 3000) and make sure the SQLite file (`backend/prisma/dev.db`) is persisted (mount a volume or switch Prisma to Postgres if needed).
+* **Frontend**: Deploy the static build to Netlify/Vercel/S3+CloudFront. Set `VITE_API_BASE_URL` at build time so the app calls the deployed API instead of localhost.
+* **Docs & Credentials**: Demo password for all seeded accounts is `DevStrongPass!`. Primary logins:
+  - Superuser: `super123`
+  - Manager: `manager01`
+  - Cashier: `cashier01`
+  - Organizer: `organizer01`
+
+PM2 / systemd snippets can be added later if you standardize on a specific host. For CSC309 deliverables, publishing both servers and providing the public URL in WEBSITE is sufficient.

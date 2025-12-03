@@ -1,95 +1,136 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { AppShell } from "../components/layout";
+import { Card, FilterBar } from "../components/ui";
 import { apiFetch } from "../lib/apiClient";
+import { formatDateTime } from "../lib/date";
+
+const PAGE_SIZE = 9;
 
 export default function UserPromotionsPage() {
+    const [typeFilter, setTypeFilter] = useState("");
+    const [page, setPage] = useState(1);
+
     const { data, isLoading, isError, error } = useQuery({
-        queryKey: ["me-promotions"],
-        queryFn: () => apiFetch("/users/me"),
+        queryKey: ["promotions", typeFilter, page],
+        queryFn: () => {
+            const params = new URLSearchParams();
+            params.set("page", String(page));
+            params.set("limit", String(PAGE_SIZE));
+            if (typeFilter) params.set("type", typeFilter);
+            return apiFetch(`/promotions?${params.toString()}`);
+        },
+        keepPreviousData: true,
     });
 
-    if (isLoading) {
-        return <div style={{ padding: "2rem" }}>Loading promotions…</div>;
-    }
+    const total = data?.count ?? 0;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    const promotions = data?.results ?? [];
 
-    if (isError) {
-        return (
-            <div style={{ padding: "2rem" }}>
-                <p style={{ color: "red" }}>
-                    Failed to load promotions: {error?.message || "Unknown error"}
-                </p>
-            </div>
-        );
+    function handleApply(e) {
+        e.preventDefault();
+        setPage(1);
     }
-
-    const me = data;
-    const promos = Array.isArray(me.promotions) ? me.promotions : [];
 
     return (
-        <div style={{ padding: "2rem" }}>
-            <h1 style={{ fontSize: "2rem", fontWeight: 700, marginBottom: "0.5rem" }}>
-                Available Promotions
-            </h1>
-            <p style={{ marginBottom: "1rem", color: "#4b5563" }}>
-                These are one-time promotions you can still use, based on your current account.
-            </p>
-            {promos.length === 0 ? (
-                <p>You have no available promotions right now.</p>
-            ) : (
-                <div
-                    style={{
-                        display: "grid",
-                        gap: "1rem",
-                        gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-                    }}
-                >
-                    {promos.map((p) => (
-                        <article
-                            key={p.id}
-                            style={{
-                                borderRadius: 16,
-                                border: "1px solid #e5e7eb",
-                                padding: "1rem 1.25rem",
-                                boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
-                                backgroundColor: "white",
-                            }}
+        <AppShell
+            title="Available promotions"
+            subtitle="Active automatic and one-time offers you can apply during purchases."
+        >
+            <Card>
+                <FilterBar onSubmit={handleApply}>
+                    <div className="form-control min-w-[160px]">
+                        <label className="label">
+                            <span className="label-text text-xs uppercase text-base-content/60">
+                                Promotion type
+                            </span>
+                        </label>
+                        <select
+                            className="select select-bordered select-sm"
+                            value={typeFilter}
+                            onChange={(e) => setTypeFilter(e.target.value)}
                         >
-                            <h2
-                                style={{
-                                    fontSize: "1.1rem",
-                                    fontWeight: 600,
-                                    marginBottom: "0.5rem",
-                                }}
+                            <option value="">All</option>
+                            <option value="automatic">Automatic</option>
+                            <option value="onetime">One-time</option>
+                        </select>
+                    </div>
+                    <button className="btn btn-primary btn-sm" type="submit">
+                        Apply
+                    </button>
+                </FilterBar>
+            </Card>
+
+            <Card>
+                {isLoading ? (
+                    <div className="flex justify-center py-8">
+                        <span className="loading loading-spinner text-primary" />
+                    </div>
+                ) : isError ? (
+                    <p className="text-error">{error?.message}</p>
+                ) : promotions.length === 0 ? (
+                    <p className="text-base-content/70">No promotions available right now.</p>
+                ) : (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {promotions.map((promo) => (
+                            <article
+                                key={promo.id}
+                                className="rounded-2xl border border-base-200 bg-base-100 p-5 shadow-card"
                             >
-                                {p.name}
-                            </h2>
-                            <dl>
-                                <div>
-                                    <dt style={{ display: "inline", fontWeight: 600 }}>Points:&nbsp;</dt>
-                                    <dd style={{ display: "inline", margin: 0 }}>
-                                        {p.points ?? 0} pts
-                                    </dd>
+                                <div className="flex items-start justify-between">
+                                    <h2 className="text-lg font-semibold">{promo.name}</h2>
+                                    <span className="badge badge-soft capitalize">{promo.type}</span>
                                 </div>
-                                {p.minSpending != null && (
-                                    <div style={{ marginBottom: 4 }}>
-                                        <dt style={{ display: "inline", fontWeight: 600 }}>
-                                            Min spending:&nbsp;
-                                        </dt>
-                                        <dd style={{ display: "inline", margin: 0 }}>${p.minSpending}</dd>
-                                    </div>
-                                )}
-                                {p.rate != null && (
-                                    <div style={{ marginBottom: 4 }}>
-                                        <dt style={{ display: "inline", fontWeight: 600 }}>
-                                            Rate bonus:&nbsp;
-                                        </dt>
-                                        <dd style={{ display: "inline", margin: 0 }}>{p.rate}</dd>
-                                    </div>
-                                )}
-                            </dl>
-                        </article>
-                    ))}
+                                <p className="mt-2 text-sm text-base-content/70">
+                                    Ends {formatDateTime(promo.endTime)}
+                                </p>
+                                <dl className="mt-4 space-y-2 text-sm">
+                                    {promo.points != null && (
+                                        <div className="flex justify-between">
+                                            <dt className="text-base-content/70">Bonus points</dt>
+                                            <dd className="font-semibold">{promo.points}</dd>
+                                        </div>
+                                    )}
+                                    {promo.rate != null && (
+                                        <div className="flex justify-between">
+                                            <dt className="text-base-content/70">Rate bonus</dt>
+                                            <dd className="font-semibold">{promo.rate}</dd>
+                                        </div>
+                                    )}
+                                    {promo.minSpending != null && (
+                                        <div className="flex justify-between">
+                                            <dt className="text-base-content/70">Min spending</dt>
+                                            <dd className="font-semibold">${promo.minSpending}</dd>
+                                        </div>
+                                    )}
+                                </dl>
+                            </article>
+                        ))}
+                    </div>
+                )}
+            </Card>
+
+            {total > PAGE_SIZE && (
+                <div className="flex items-center justify-between">
+                    <button
+                        className="btn btn-outline btn-sm"
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                    >
+                        Previous
+                    </button>
+                    <span className="text-sm text-base-content/70">
+                        Page {page} of {totalPages}
+                    </span>
+                    <button
+                        className="btn btn-outline btn-sm"
+                        onClick={() => setPage((p) => (p < totalPages ? p + 1 : p))}
+                        disabled={page >= totalPages}
+                    >
+                        Next
+                    </button>
                 </div>
             )}
-        </div>
+        </AppShell>
     );
 }

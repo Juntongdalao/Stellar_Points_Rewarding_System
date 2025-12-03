@@ -121,15 +121,16 @@ router.get('/', authenticateToken, requireRole('manager'), async (req, res) => {
                     name: true,
                     email: true,
                     birthday: true,
-                    role: true,
-                    points: true,
-                    createdAt: true,
-                    lastLogin: true,
-                    verified: true,
-                    avatarUrl: true,
-                }
-            }),
-        ]);
+                role: true,
+                points: true,
+                createdAt: true,
+                lastLogin: true,
+                verified: true,
+                avatarUrl: true,
+                suspicious: true,
+            }
+        }),
+    ]);
         return res.status(200).json({ count, results });
     } catch (err) {
         console.error('Error fetching users:', err); 
@@ -238,7 +239,10 @@ router.get('/me', authenticateToken, async(req, res) => {
         if (!user) {
             return res.status(404).json({error: 'User not found'});
         }
-        const promotions = await getAvailableOneTimePromosForUser(user.id);
+        const [promotions, organizerCount] = await Promise.all([
+            getAvailableOneTimePromosForUser(user.id),
+            prisma.eventOrganizer.count({ where: { userId: user.id } }),
+        ]);
         return res.status(200).json({
             id: user.id,
             utorid: user.utorid,
@@ -254,6 +258,7 @@ router.get('/me', authenticateToken, async(req, res) => {
             lastLogin: user.lastLogin 
                 ? new Date(user.lastLogin).toISOString() 
                 : new Date(0).toISOString(),
+            organizer: organizerCount > 0,
             promotions,
         });
     } catch (err) {
@@ -322,7 +327,10 @@ router.get('/:userId', authenticateToken, requireRole('cashier'), async (req, re
             }, 
         });
         if (!user) return res.status(404).json({error: 'User not found'});
-        const promotions = await getAvailableOneTimePromosForUser(userId);
+        const [promotions, organizerCount] = await Promise.all([
+            getAvailableOneTimePromosForUser(userId),
+            prisma.eventOrganizer.count({ where: { userId } }),
+        ]);
         const isManagerPlus = (req.user.role.toLowerCase() === 'manager' || req.user.role.toLowerCase() === 'superuser');
         if (!isManagerPlus) {
             return res.json({
@@ -348,6 +356,7 @@ router.get('/:userId', authenticateToken, requireRole('cashier'), async (req, re
                 : new Date(0).toISOString(),
             verified: user.verified,
             avatarUrl: user.avatarUrl,
+            organizer: organizerCount > 0,
             promotions,
         });
     } catch (err) {

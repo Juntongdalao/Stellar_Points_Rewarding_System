@@ -1,9 +1,9 @@
 // Login Page
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import useAuthStore from '../store/authStore';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import useAuthStore from "../store/authStore";
 
-const API_BASE = 'http://localhost:3000'; // backend port
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 export default function LoginPage() {
     const [utorid, setUtorid] = useState('');
@@ -19,7 +19,6 @@ export default function LoginPage() {
         setError('');
         setLoading(true);
         try {
-            // Get Token
             const tokenRes = await fetch(`${API_BASE}/auth/tokens`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -61,40 +60,62 @@ export default function LoginPage() {
         }
     }
     return (
-        <div style={{ padding: '2rem' }}>
-            <h1>Login</h1>
-            <form onSubmit={handleSubmit} style={{ maxWidth: 320 }}>
-                <div style={{ marginBottom: '1rem' }}>
-                    <label htmlFor='utorid'>UTORid</label>
-                    <input
-                        id="utorid"
-                        type="text"
-                        value={utorid}
-                        onChange={(e) => setUtorid(e.target.value)}
-                        required
-                        autoComplete='username'
-                        style={{ display: 'block', width: '100%' }}
-                    />
+        <div className="min-h-screen bg-gradient-to-br from-surface-50 via-white to-surface-100 px-4 py-10 flex flex-col items-center justify-center">
+            <div className="w-full max-w-md space-y-6 rounded-3xl border border-base-200/70 bg-white/90 p-8 shadow-xl backdrop-blur">
+                <div className="text-center space-y-2">
+                    <h1 className="text-3xl font-semibold text-neutral">Welcome back</h1>
+                    <p className="text-base text-neutral/70">
+                        Sign in with your UTORid credentials to access StellarPoints.
+                    </p>
                 </div>
-                <div style={{ marginBottom: '1rem' }}>
-                    <label htmlFor="password">Password</label>
-                    <input
-                        id="password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        autoComplete="current-password"
-                        style={{ display: 'block', width: '100%' }}
-                    />
-                </div>
-                {error && (
-                    <p style={{ color: 'red', marginBottom: '1rem' }}>{error}</p>
-                )}
-                <button type="submit" disabled={loading}>
-                    {loading ? 'Logging in…' : 'Login'}
-                </button>
-            </form>
+                <form className="space-y-4" onSubmit={handleSubmit}>
+                    <div className="form-control">
+                        <label htmlFor="utorid" className="label text-sm font-medium text-neutral/80">
+                            UTORid
+                        </label>
+                        <input
+                            id="utorid"
+                            type="text"
+                            value={utorid}
+                            onChange={(e) => setUtorid(e.target.value)}
+                            required
+                            autoComplete="username"
+                            className="input input-bordered input-lg"
+                            placeholder="e.g., super123"
+                            data-cy="login-utorid"
+                        />
+                    </div>
+                    <div className="form-control">
+                        <label htmlFor="password" className="label text-sm font-medium text-neutral/80">
+                            Password
+                        </label>
+                        <input
+                            id="password"
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            autoComplete="current-password"
+                            className="input input-bordered input-lg"
+                            placeholder="Your password"
+                            data-cy="login-password"
+                        />
+                    </div>
+                    {error && (
+                        <div className="alert alert-error text-sm">
+                            <span>{error}</span>
+                        </div>
+                    )}
+                    <button
+                        type="submit"
+                        className="btn btn-primary btn-lg w-full"
+                        disabled={loading}
+                        data-cy="login-submit"
+                    >
+                        {loading ? "Logging in…" : "Login"}
+                    </button>
+                </form>
+            </div>
         </div>
     );
 }

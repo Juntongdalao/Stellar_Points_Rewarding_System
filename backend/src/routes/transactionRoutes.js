@@ -203,9 +203,20 @@ router.post('/transactions', authenticateToken, requireRole('cashier'), async (r
 });
 
 // GET for /transactions (Manager or higher)
-router.get('/transactions', authenticateToken, requireRole('manager'), async (req, res) => {
+router.get('/transactions', authenticateToken, async (req, res) => {
     const {name, createdBy, suspicious, promotionId, type, relatedId, 
         amount, operator, page = 1, limit = 10} = req.query;
+    const role = String(req.user.role || '').toLowerCase();
+    const isManagerPlus = role === 'manager' || role === 'superuser';
+    if (!isManagerPlus) {
+        if (role !== 'cashier') {
+            return res.status(403).json({ error: 'Forbidden: insufficient clearance' });
+        }
+        if (!req.user.utorid) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+        req.query.createdBy = req.user.utorid;
+    }
     const pid = promotionId !== undefined ? Number(promotionId) : null;
     if (pid !== null && !Number.isInteger(pid)) {
         return res.status(400).json({error: 'promotionId must be an integer'});
@@ -219,9 +230,12 @@ router.get('/transactions', authenticateToken, requireRole('manager'), async (re
             ]
         };
     }
-    if (createdBy) {
+    if (createdBy || (!isManagerPlus && role === 'cashier')) {
+        const target = createdBy ?? req.user.utorid;
         where.createdBy = {
-            utorid: {contains: String(createdBy), mode: 'insensitive'}
+            utorid: createdBy
+                ? { contains: String(target), mode: 'insensitive' }
+                : { equals: String(target), mode: 'insensitive' }
         };
     }
     if (suspicious !== undefined) {

@@ -1,11 +1,12 @@
-// Manager / Superuser: view & update users (filters + pagination)
-
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { AppShell } from "../components/layout";
+import { Card, DataTable, FilterBar } from "../components/ui";
 import { apiFetch } from "../lib/apiClient";
+import useAuthStore from "../store/authStore";
 
 const PAGE_SIZE = 10;
-const ROLES = ["regular", "cashier", "manager", "superuser"];
+const ROLE_OPTIONS = ["regular", "cashier", "manager", "superuser"];
 
 export default function ManagerUsersPage() {
     const [page, setPage] = useState(1);
@@ -13,20 +14,14 @@ export default function ManagerUsersPage() {
     const [roleFilter, setRoleFilter] = useState("");
     const [verifiedFilter, setVerifiedFilter] = useState("");
     const [activatedFilter, setActivatedFilter] = useState("");
-
-    const [actionError, setActionError] = useState("");
-    const [actionMessage, setActionMessage] = useState("");
+    const [banner, setBanner] = useState("");
     const [updatingId, setUpdatingId] = useState(null);
 
     const queryClient = useQueryClient();
+    const hasSuperPowers = useAuthStore((s) => s.hasRole("superuser"));
+    const currentUserId = useAuthStore((s) => s.user?.id ?? null);
 
-    const {
-        data,
-        isLoading,
-        isError,
-        error,
-        isFetching,
-    } = useQuery({
+    const { data, isLoading, isError, error, isFetching } = useQuery({
         queryKey: [
             "manager-users",
             { page, searchName, roleFilter, verifiedFilter, activatedFilter },
@@ -39,8 +34,6 @@ export default function ManagerUsersPage() {
             if (roleFilter) params.set("role", roleFilter);
             if (verifiedFilter) params.set("verified", verifiedFilter);
             if (activatedFilter) params.set("activated", activatedFilter);
-
-            // Backend: GET /users?name=&role=&verified=&activated=&page=&limit=
             return apiFetch(`/users?${params.toString()}`);
         },
         keepPreviousData: true,
@@ -50,285 +43,312 @@ export default function ManagerUsersPage() {
     const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
     const users = data?.results ?? [];
 
-    function handleApplyFilters(e) {
+    const roleChoices = useMemo(
+        () => (hasSuperPowers ? ROLE_OPTIONS : ["regular", "cashier"]),
+        [hasSuperPowers],
+    );
+
+    function handleFilters(e) {
         e.preventDefault();
         setPage(1);
     }
 
+    function handleResetFilters() {
+        setSearchName("");
+        setRoleFilter("");
+        setVerifiedFilter("");
+        setActivatedFilter("");
+        setPage(1);
+    }
+
     async function updateUser(userId, payload, successText) {
-        setActionError("");
-        setActionMessage("");
+        setBanner("");
         setUpdatingId(userId);
         try {
-            // Backend: PATCH /users/:userId with subset { role?, verified? }
             await apiFetch(`/users/${userId}`, {
                 method: "PATCH",
                 body: payload,
             });
-            setActionMessage(successText);
-            // Refresh all manager-users queries
+            setBanner(successText);
             await queryClient.invalidateQueries({ queryKey: ["manager-users"] });
         } catch (err) {
-            console.error(err);
-            setActionError(err.message || "Failed to update user");
+            setBanner(err.message || "Unable to update user.");
         } finally {
             setUpdatingId(null);
         }
     }
 
-    function handleToggleVerified(u) {
-        updateUser(
-            u.id,
-            { verified: !u.verified },
-            `User ${u.utorid} marked as ${!u.verified ? "verified" : "unverified"}.`,
-        );
-    }
-
-    function handleChangeRole(u, newRole) {
-        if (!newRole || newRole === u.role) return;
-        updateUser(
-            u.id,
-            { role: newRole },
-            `Updated role for ${u.utorid} to ${newRole}.`,
-        );
-    }
-
-    return (
-        <div style={{ padding: "2rem" }}>
-            <h1 style={{ fontSize: "2rem", fontWeight: 700, marginBottom: "1rem" }}>
-                Manager: Users
-            </h1>
-
-            {/* Global action feedback */}
-            {actionError && (
-                <p style={{ color: "red", marginBottom: "0.5rem" }}>{actionError}</p>
-            )}
-            {actionMessage && (
-                <p style={{ color: "green", marginBottom: "0.5rem" }}>
-                    {actionMessage}
-                </p>
-            )}
-
-            {/* Filters */}
-            <form
-                onSubmit={handleApplyFilters}
-                style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "1rem",
-                    alignItems: "flex-end",
-                    marginBottom: "1.5rem",
-                }}
-            >
-                {/* Search by name / utorid */}
-                <div>
-                    <label htmlFor="searchName" style={{ display: "block", marginBottom: 4 }}>
-                        Search (name / UTORid)
-                    </label>
-                    <input
-                        id="searchName"
-                        type="text"
-                        value={searchName}
-                        onChange={(e) => setSearchName(e.target.value)}
-                        placeholder="e.g., clive"
-                    />
-                </div>
-
-                {/* Role filter */}
-                <div>
-                    <label htmlFor="roleFilter" style={{ display: "block", marginBottom: 4 }}>
-                        Role
-                    </label>
-                    <select
-                        id="roleFilter"
-                        value={roleFilter}
-                        onChange={(e) => setRoleFilter(e.target.value)}
-                    >
-                        <option value="">ALL</option>
-                        {ROLES.map((r) => (
-                            <option key={r} value={r}>
-                                {r}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                
-                {/* Verified filter */}
-                <div>
-                    <label htmlFor="verifiedFilter" style={{ display: "block", marginBottom: 4 }}>
-                        Verified
-                    </label>
-                    <select
-                        id="verifiedFilter"
-                        value={verifiedFilter}
-                        onChange={(e) => setVerifiedFilter(e.target.value)}
-                    >
-                        <option value="">All</option>
-                        <option value="true">Verified</option>
-                        <option value="false">Unverified</option>
-                    </select>
-                </div>
-
-                {/* Activated filter */}
-                <div>
-                    <label htmlFor="activatedFilter" style={{ display: "block", marginBottom: 4 }}>
-                        Activated
-                    </label>
-                    <select
-                        id="activatedFilter"
-                        value={activatedFilter}
-                        onChange={(e) => setActivatedFilter(e.target.value)}
-                    >
-                        <option value="">All</option>
-                        <option value="true">Activated</option>
-                        <option value="false">Not activated</option>
-                    </select>
-                </div>
-
-                <button
-                    type="submit"
-                    style={{
-                        padding: "0.5rem 1rem",
-                        borderRadius: 999,
-                        border: "1px solid #4f46e5",
-                        backgroundColor: "#4f46e5",
-                        color: "white",
-                        fontWeight: 500,
-                    }}
-                >
-                    Apply
-                </button>
-            </form>
-
-            {/* Loading / error */}
-            {isLoading && <p>Loading users…</p>}
-            {isError && (
-                <p style={{ color: "red" }}>
-                    Failed to load users: {error?.message || "Unknown error"}
-                </p>
-            )}
-
-            {/* Table */}
-            {!isLoading && !isError && (
-                <>
-                    {users.length === 0 ? (
-                        <p>No users found.</p>
-                    ) : (
-                        <div style={{ overflowX: "auto" }}>
-                            <table
-                                style={{
-                                    width: "100%",
-                                    borderCollapse: "collapse",
-                                    minWidth: 600,
+    const columns = useMemo(
+        () => [
+            {
+                header: "User",
+                headerClassName: "min-w-[220px]",
+                render: (u) => (
+                    <div className="space-y-1">
+                        <p className="text-sm font-semibold text-base-content">
+                            {u.name ?? u.utorid}
+                        </p>
+                        <p className="text-xs text-neutral/70">{u.email}</p>
+                        <p className="text-xs text-neutral/60">UTORid: {u.utorid}</p>
+                    </div>
+                ),
+            },
+            {
+                header: "Role",
+                headerClassName: "w-48",
+                render: (u) => {
+                    const options = roleChoices.includes(u.role)
+                        ? roleChoices
+                        : [...roleChoices, u.role];
+                    const disabled =
+                        updatingId === u.id ||
+                        u.id === currentUserId ||
+                        (!hasSuperPowers && (u.role === "manager" || u.role === "superuser"));
+                    return (
+                        <div className="space-y-2">
+                            <select
+                                className="select select-bordered select-sm w-full"
+                                value={u.role}
+                                disabled={disabled}
+                                onChange={(event) => {
+                                    const nextRole = event.target.value;
+                                    if (nextRole === u.role) return;
+                                    updateUser(
+                                        u.id,
+                                        { role: nextRole },
+                                        `Updated ${u.utorid} to ${nextRole}.`,
+                                    );
                                 }}
                             >
-                                <thead>
-                                    <tr>
-                                        <th style={thStyle}>ID</th>
-                                        <th style={thStyle}>UTORid</th>
-                                        <th style={thStyle}>Email</th>
-                                        <th style={thStyle}>Role</th>
-                                        <th style={thStyle}>Verified</th>
-                                        <th style={thStyle}>Points</th>
-                                        <th style={thStyle}>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {users.map((u) => (
-                                        <tr key={u.id}>
-                                            <td style={tdStyle}>{u.id}</td>
-                                            <td style={tdStyle}>{u.utorid}</td>
-                                            <td style={tdStyle}>{u.email}</td>
-                                            <td style={tdStyle}>
-                                                <select
-                                                    value={u.role}
-                                                    onChange={(e) => handleChangeRole(u, e.target.value)}
-                                                    disabled={updatingId === u.id}
-                                                >
-                                                    {ROLES.map((r) => (
-                                                        <option key={r} value={r}>
-                                                            {r}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </td>
-                                            <td style={tdStyle}>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleToggleVerified(u)}
-                                                    disabled={updatingId === u.id}
-                                                    style={{
-                                                        padding: "0.15rem 0.6rem",
-                                                        borderRadius: 999,
-                                                        border: "1px solid #d1d5db",
-                                                        backgroundColor: u.verified ? "#dcfce7" : "#fee2e2",
-                                                    }}
-                                                >
-                                                    {u.verified ? "Verified" : "Unverified"}
-                                                </button>
-                                            </td>
-                                            <td style={tdStyle}>{u.points ?? 0}</td>
-                                            <td style={tdStyle}>
-                                                {updatingId === u.id && (
-                                                    <span style={{ fontSize: "0.8rem" }}>Updating…</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                {options.map((role) => (
+                                    <option
+                                        key={`${u.id}-${role}`}
+                                        value={role}
+                                        disabled={
+                                            role === "cashier" &&
+                                            u.suspicious &&
+                                            u.role !== "cashier"
+                                        }
+                                    >
+                                        {role.charAt(0).toUpperCase() + role.slice(1)}
+                                        {role === "superuser" ? " ⭐" : ""}
+                                    </option>
+                                ))}
+                            </select>
+                            {u.suspicious && (
+                                <p className="text-xs text-error">
+                                    Suspicious users cannot be promoted to cashier.
+                                </p>
+                            )}
                         </div>
-                    )}
-
-                    {/* Pagination */}
-                    {total > 0 && (
-                        <div
-                            style={{
-                                marginTop: "1.5rem",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "0.75rem",
-                            }}
+                    );
+                },
+            },
+            {
+                header: "Verification",
+                headerClassName: "w-40",
+                render: (u) => (
+                    <button
+                        type="button"
+                        className={`btn btn-sm w-full ${
+                            u.verified ? "btn-success" : "btn-outline"
+                        }`}
+                        disabled={updatingId === u.id}
+                        onClick={() =>
+                            updateUser(
+                                u.id,
+                                { verified: !u.verified },
+                                `${u.utorid} marked as ${!u.verified ? "verified" : "unverified"}.`,
+                            )
+                        }
+                    >
+                        {u.verified ? "Verified" : "Unverified"}
+                    </button>
+                ),
+            },
+            {
+                header: "Status",
+                headerClassName: "w-48",
+                render: (u) => (
+                    <div className="flex flex-col gap-2">
+                        <span
+                            className={`badge ${
+                                u.suspicious ? "badge-error" : "badge-outline"
+                            }`}
                         >
-                            <button
-                                type="button"
-                                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                                disabled={page === 1}
-                            >
-                                Previous
-                            </button>
-                            <span>
-                                Page {page} / {totalPages}{" "}
-                                {isFetching && (
-                                    <span style={{ fontSize: "0.8rem" }}>…loading</span>
-                                )}
+                            {u.suspicious ? "Suspicious" : "Clean"}
+                        </span>
+                        <span className="badge badge-outline">
+                            {u.points ?? 0} pts
+                        </span>
+                        {u.role === "superuser" && (
+                            <span className="badge badge-warning badge-outline">
+                                Superuser
                             </span>
-                            <button
-                                type="button"
-                                onClick={() => setPage((p) => (p < totalPages ? p + 1 : p))}
-                                disabled={page >= totalPages}
-                            >
-                                Next
-                            </button>
-                        </div>
-                    )}
-                </>
+                        )}
+                    </div>
+                ),
+            },
+            {
+                header: "Flags",
+                headerClassName: "w-52",
+                render: (u) => (
+                    <div className="flex flex-col gap-2">
+                        <button
+                            type="button"
+                            className="btn btn-xs"
+                            disabled={updatingId === u.id}
+                            onClick={() =>
+                                updateUser(
+                                    u.id,
+                                    { suspicious: !u.suspicious },
+                                    `${u.utorid} marked as ${!u.suspicious ? "suspicious" : "clear"}.`,
+                                )
+                            }
+                        >
+                            {u.suspicious ? "Clear flag" : "Flag suspicious"}
+                        </button>
+                        <p className="text-xs text-neutral/60">
+                            Use flags before demoting/pending investigations.
+                        </p>
+                    </div>
+                ),
+            },
+        ],
+        [currentUserId, hasSuperPowers, roleChoices, updatingId],
+    );
+
+    return (
+        <AppShell
+            title="User administration"
+            subtitle={
+                hasSuperPowers
+                    ? "Superusers can promote/demote managers and fellow supers while keeping suspicious users out of cashier roles."
+                    : "Managers may onboard users, verify identities, and escalate flags."
+            }
+        >
+            {banner && (
+                <Card>
+                    <p className="text-sm text-primary">{banner}</p>
+                </Card>
             )}
-        </div>
+
+            <Card title="Filters">
+                <FilterBar onSubmit={handleFilters} onReset={handleResetFilters}>
+                    <div className="form-control flex-1 min-w-[180px]">
+                        <label className="label text-xs uppercase text-neutral/60">
+                            Search (name or UTORid)
+                        </label>
+                        <input
+                            className="input input-bordered input-sm"
+                            placeholder="e.g., super123"
+                            value={searchName}
+                            onChange={(e) => setSearchName(e.target.value)}
+                        />
+                    </div>
+                    <div className="form-control w-40">
+                        <label className="label text-xs uppercase text-neutral/60">Role</label>
+                        <select
+                            className="select select-bordered select-sm"
+                            value={roleFilter}
+                            onChange={(e) => setRoleFilter(e.target.value)}
+                        >
+                            <option value="">All</option>
+                            {ROLE_OPTIONS.map((role) => (
+                                <option key={role} value={role}>
+                                    {role}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="form-control w-40">
+                        <label className="label text-xs uppercase text-neutral/60">
+                            Verified
+                        </label>
+                        <select
+                            className="select select-bordered select-sm"
+                            value={verifiedFilter}
+                            onChange={(e) => setVerifiedFilter(e.target.value)}
+                        >
+                            <option value="">All</option>
+                            <option value="true">Verified</option>
+                            <option value="false">Unverified</option>
+                        </select>
+                    </div>
+                    <div className="form-control w-40">
+                        <label className="label text-xs uppercase text-neutral/60">
+                            Activated
+                        </label>
+                        <select
+                            className="select select-bordered select-sm"
+                            value={activatedFilter}
+                            onChange={(e) => setActivatedFilter(e.target.value)}
+                        >
+                            <option value="">All</option>
+                            <option value="true">Active</option>
+                            <option value="false">Pending reset</option>
+                        </select>
+                    </div>
+                    <div className="flex gap-2">
+                        <button className="btn btn-primary btn-sm" type="submit">
+                            Apply
+                        </button>
+                        <button className="btn btn-ghost btn-sm" type="reset">
+                            Reset
+                        </button>
+                    </div>
+                </FilterBar>
+            </Card>
+
+            <Card
+                title="All users"
+                actions={
+                    isFetching ? (
+                        <span className="text-sm text-neutral/60">Refreshing…</span>
+                    ) : undefined
+                }
+            >
+                {isLoading && (
+                    <div className="py-10 text-center text-neutral/60">Loading users…</div>
+                )}
+                {isError && (
+                    <div className="py-4 text-center text-error">
+                        {error?.message || "Unable to load users."}
+                    </div>
+                )}
+                {!isLoading && !isError && (
+                    <>
+                        <DataTable
+                            data={users}
+                            columns={columns}
+                            emptyMessage="No users match the current filters."
+                        />
+                        {total > 0 && (
+                            <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                                <button
+                                    className="btn btn-outline btn-sm"
+                                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                    disabled={page === 1}
+                                >
+                                    Previous
+                                </button>
+                                <span className="text-sm text-neutral/70">
+                                    Page {page} of {totalPages}
+                                </span>
+                                <button
+                                    className="btn btn-outline btn-sm"
+                                    onClick={() =>
+                                        setPage((p) => (p < totalPages ? p + 1 : p))
+                                    }
+                                    disabled={page >= totalPages}
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        )}
+                    </>
+                )}
+            </Card>
+        </AppShell>
     );
 }
-
-// Simple shared styles for table cells
-const thStyle = {
-    textAlign: "left",
-    padding: "0.5rem 0.75rem",
-    borderBottom: "1px solid #e5e7eb",
-    fontSize: "0.85rem",
-    color: "#6b7280",
-};
-
-const tdStyle = {
-    padding: "0.5rem 0.75rem",
-    borderBottom: "1px solid #f3f4f6",
-    fontSize: "0.9rem",
-};

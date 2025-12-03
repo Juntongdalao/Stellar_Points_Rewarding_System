@@ -3,6 +3,7 @@
 // - Persists them to localStorage so login survives page refreshes
 
 import { create } from "zustand";
+import { apiFetch } from "../lib/apiClient";
 
 const STORAGE_KEY = "stellar_auth_v1"; // key used in localStorage
 
@@ -10,6 +11,7 @@ const useAuthStore = create((set, get) => ({
     user: null,
     token: null,
     hydrated: false, // prevents running hydrate() multiple times
+    lastSyncedAt: null,
 
     // Saves token and user in Zustand, writes them to localStorage after login
     setAuth(token, user) {
@@ -23,14 +25,49 @@ const useAuthStore = create((set, get) => ({
         }
     },
 
-    // Clears auth from Zustand, removes it from localStorage
-    clearAuth() {
+    hasRole(role) {
+        const target = String(role).toLowerCase();
+        if (target === "organizer") {
+            return !!get().user?.organizer;
+        }
+        const currentRole = String(get().user?.role || "regular").toLowerCase();
+        const order = { regular: 0, cashier: 1, manager: 2, superuser: 3 };
+        const required = order[target];
+        if (required == null) return false;
+        return order[currentRole] >= required;
+    },
+
+    logout() {
         set({ token: null, user: null });
         try {
             window.localStorage.removeItem(STORAGE_KEY);
         } catch (err) {
             console.warn("Failed to clear auth in storage:", err);
         }
+    },
+
+    refreshProfile(nextUser) {
+        const currentToken = get().token;
+        if (!currentToken) return;
+        const mergedUser = { ...get().user, ...nextUser };
+        set({ user: mergedUser, lastSyncedAt: Date.now() });
+        try {
+            window.localStorage.setItem(
+                STORAGE_KEY,
+                JSON.stringify({ token: currentToken, user: mergedUser }),
+            );
+        } catch (err) {
+            console.warn("Failed to persist refreshed profile:", err);
+        }
+    },
+
+    // Clears auth from Zustand, removes it from localStorage
+    async fetchProfile() {
+        const token = get().token;
+        if (!token) return null;
+        const me = await apiFetch("/users/me", { token, toastErrors: false });
+        get().refreshProfile(me);
+        return me;
     },
 
     // Hydration: Reads from localStorage ONCE (at app startup) and restores token + user

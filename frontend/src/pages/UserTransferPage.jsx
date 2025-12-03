@@ -1,78 +1,56 @@
-// Regular user: manually transfer points to another user by numeric userId
-
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AppShell } from "../components/layout";
+import { Card } from "../components/ui";
 import { apiFetch } from "../lib/apiClient";
-
-// Build payload for POST /users/:userId/transactions
-function buildTransferPayload(amount, note) {
-    return {
-        type: "transfer",
-        amount,
-        remark: note || "",
-    };
-}
 
 export default function UserTransferPage() {
     const queryClient = useQueryClient();
-
     const [recipientId, setRecipientId] = useState("");
     const [amount, setAmount] = useState("");
     const [note, setNote] = useState("");
     const [formError, setFormError] = useState("");
+    const [successMessage, setSuccessMessage] = useState("");
 
-    // Load /users/me to display current points
-    const { data: me, isLoading: meLoading, isError: meError } = useQuery({
-        queryKey: ["me-transfer"],
+    const { data: me, isLoading: meLoading } = useQuery({
+        queryKey: ["me"],
         queryFn: () => apiFetch("/users/me"),
     });
 
     const transferMutation = useMutation({
-        mutationFn: ({ userId, amount, note }) => {
-            const payload = buildTransferPayload(amount, note);
-            // Backend: POST /users/:userId/transactions (type must be "transfer")
-            return apiFetch(`/users/${userId}/transactions`, {
+        mutationFn: ({ userId, amount, note }) =>
+            apiFetch(`/users/${userId}/transactions`, {
                 method: "POST",
-                body: payload,
-            });
-        },
+                body: { type: "transfer", amount, remark: note ?? "" },
+            }),
         onSuccess: () => {
-            setFormError("");
             setRecipientId("");
             setAmount("");
             setNote("");
-
-            // Refresh points + my transactions
-            queryClient.invalidateQueries({ queryKey: ["me-transfer"] });
-            queryClient.invalidateQueries({ queryKey: ["me-points"] });
+            setFormError("");
+            setSuccessMessage("Transfer created successfully.");
+            queryClient.invalidateQueries({ queryKey: ["me"] });
             queryClient.invalidateQueries({ queryKey: ["my-transactions"] });
-
-            alert("Transfer created successfully.");
         },
         onError: (err) => {
-            console.error(err);
+            setSuccessMessage("");
             setFormError(err.message || "Failed to create transfer.");
         },
     });
+
     function handleSubmit(e) {
         e.preventDefault();
         setFormError("");
+        setSuccessMessage("");
 
-        const trimmedRecipient = recipientId.trim();
-        const numericId = Number(trimmedRecipient);
+        const numericId = Number(recipientId.trim());
         const numericAmount = Number(amount);
-
-        if (!trimmedRecipient) {
-            setFormError("Please enter a recipient user ID (numeric).");
-            return;
-        }
 
         if (!Number.isInteger(numericId) || numericId <= 0) {
             setFormError("Recipient user ID must be a positive integer.");
             return;
         }
-
-        if (!Number.isFinite(numericAmount) || !Number.isInteger(numericAmount) || numericAmount <= 0) {
+        if (!Number.isInteger(numericAmount) || numericAmount <= 0) {
             setFormError("Amount must be a positive integer.");
             return;
         }
@@ -85,90 +63,92 @@ export default function UserTransferPage() {
     }
 
     return (
-        <div style={{ padding: "2rem", maxWidth: 520 }}>
-            <h1 style={{ fontSize: "2rem", fontWeight: 700, marginBottom: "0.75rem" }}>
-                Transfer Points
-            </h1>
+        <AppShell
+            title="Transfer points"
+            subtitle="Send loyalty points directly to another member."
+        >
+            <Card>
+                {meLoading ? (
+                    <div className="flex items-center gap-2">
+                        <span className="loading loading-spinner text-primary" />
+                        <span>Loading your balance…</span>
+                    </div>
+                ) : me ? (
+                    <div className="text-base-content/70 text-sm">
+                        Logged in as <strong>{me.utorid}</strong> ({me.role}). Current
+                        balance:{" "}
+                        <strong className="text-base-content">{me.points ?? 0}</strong> points.
+                    </div>
+                ) : null}
+            </Card>
 
-            {meLoading && <p>Loading your balance…</p>}
-            {meError && (
-                <p style={{ color: "red" }}>Failed to load your current balance.</p>
-            )}
-
-            {me && (
-                <p style={{ marginBottom: "1rem", color: "#4b5563" }}>
-                    You are logged in as <strong>{me.utorid}</strong> ({me.role}).<br />
-                    Current balance:{" "}
-                    <strong>{typeof me.points === "number" ? me.points : 0}</strong> points.
-                </p>
-            )}
-
-            {formError && (
-                <p style={{ color: "red", marginBottom: "0.75rem" }}>{formError}</p>
-            )}
-
-            <form onSubmit={handleSubmit} style={{ display: "grid", gap: "1rem" }}>
-                <div>
-                    <label htmlFor="recipientId" style={{ display: "block", marginBottom: 4 }}>
-                        Recipient User ID
-                    </label>
-                    <input
-                        id="recipientId"
-                        type="number"
-                        min="1"
-                        value={recipientId}
-                        onChange={(e) => setRecipientId(e.target.value)}
-                        placeholder="Numeric user ID (e.g., 3)"
-                        style={{ width: "100%" }}
-                    />
-                    <p style={{ fontSize: "0.8rem", color: "#6b7280", marginTop: 4 }}>
-                        This is the internal numeric user ID, not UTORid. (Matches backend
-                        <code> /users/:userId/transactions </code> API.)
-                    </p>
-                </div>
-                <div>
-                    <label htmlFor="amount" style={{ display: "block", marginBottom: 4 }}>
-                        Amount of points
-                    </label>
-                    <input
-                        id="amount"
-                        type="number"
-                        min="1"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        placeholder="e.g., 100"
-                        style={{ width: "100%" }}
-                    />
-                </div>
-                <div>
-                    <label htmlFor="note" style={{ display: "block", marginBottom: 4 }}>
-                        Note (optional)
-                    </label>
-                    <textarea
-                        id="note"
-                        rows={3}
-                        value={note}
-                        onChange={(e) => setNote(e.target.value)}
-                        placeholder="Reason for transfer…"
-                        style={{ width: "100%", resize: "vertical" }}
-                    />
-                </div>
-
-                <button
-                    type="submit"
-                    disabled={transferMutation.isLoading}
-                    style={{
-                        padding: "0.6rem 1.4rem",
-                        borderRadius: 999,
-                        border: "1px solid #4f46e5",
-                        backgroundColor: "#4f46e5",
-                        color: "white",
-                        fontWeight: 500,
-                    }}
-                >
-                    {transferMutation.isLoading ? "Creating transfer…" : "Send points"}
-                </button>
-            </form>
-        </div>
+            <Card>
+                {formError && (
+                    <div className="alert alert-error mb-4">
+                        <span>{formError}</span>
+                    </div>
+                )}
+                {successMessage && (
+                    <div className="alert alert-success mb-4">
+                        <span>{successMessage}</span>
+                    </div>
+                )}
+                <form className="grid gap-4" onSubmit={handleSubmit}>
+                    <div className="form-control">
+                        <label htmlFor="recipientId" className="label">
+                            <span className="label-text">Recipient user ID</span>
+                        </label>
+                        <input
+                            id="recipientId"
+                            type="number"
+                            min="1"
+                            className="input input-bordered"
+                            value={recipientId}
+                            onChange={(e) => setRecipientId(e.target.value)}
+                            placeholder="Numeric user ID (e.g., 3)"
+                        />
+                        <label className="label">
+                            <span className="label-text-alt text-base-content/60">
+                                Use the numeric internal ID shown to managers.
+                            </span>
+                        </label>
+                    </div>
+                    <div className="form-control">
+                        <label htmlFor="amount" className="label">
+                            <span className="label-text">Amount of points</span>
+                        </label>
+                        <input
+                            id="amount"
+                            type="number"
+                            min="1"
+                            className="input input-bordered"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            placeholder="e.g., 100"
+                        />
+                    </div>
+                    <div className="form-control">
+                        <label htmlFor="note" className="label">
+                            <span className="label-text">Note (optional)</span>
+                        </label>
+                        <textarea
+                            id="note"
+                            className="textarea textarea-bordered"
+                            rows={3}
+                            value={note}
+                            onChange={(e) => setNote(e.target.value)}
+                            placeholder="Reason for transfer…"
+                        />
+                    </div>
+                    <button
+                        type="submit"
+                        className="btn btn-primary"
+                        disabled={transferMutation.isLoading}
+                    >
+                        {transferMutation.isLoading ? "Sending…" : "Send points"}
+                    </button>
+                </form>
+            </Card>
+        </AppShell>
     );
 }

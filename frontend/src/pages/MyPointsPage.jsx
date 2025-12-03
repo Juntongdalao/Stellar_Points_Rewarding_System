@@ -1,47 +1,69 @@
-import { useQuery } from '@tanstack/react-query';
-import useAuthStore from '../store/authStore';
-import { apiFetch } from '../lib/apiClient';
+import { useQuery } from "@tanstack/react-query";
+import { AppShell } from "../components/layout";
+import { Card } from "../components/ui";
+import { apiFetch } from "../lib/apiClient";
+import { formatDateTime } from "../lib/date";
 
 export default function MyPointsPage() {
-    const token = useAuthStore((s) => s.token);
-
     const { data, isLoading, error } = useQuery({
-        queryKey: ['me'],
-        queryFn: () => apiFetch('/users/me', { token }),
-        enabled: !!token, // don't run if not logged in
+        queryKey: ["me"],
+        queryFn: () => apiFetch("/users/me"),
     });
 
-    if (!token) {
-        // ProtectedRoute should already stop this, but just in case
-        return <div>Not authenticated.</div>;
+    if (isLoading) {
+        return (
+            <div className="flex min-h-[40vh] items-center justify-center">
+                <span className="loading loading-spinner loading-lg text-primary" />
+            </div>
+        );
     }
 
-    if (isLoading) return <div>Loading your info…</div>;
-    if (error) return <div style={{ color: 'red' }}>Error: {error.message}</div>;
+    if (error) {
+        return (
+            <AppShell title="My Points">
+                <Card>
+                    <p className="text-error">{error.message}</p>
+                </Card>
+            </AppShell>
+        );
+    }
 
     const me = data || {};
-    const role = String(me.role || '').toLowerCase();
 
     return (
-        <div style={{ padding: '1.5rem' }}>
-            <h1>My Points</h1>
-            <p>
-                <strong>UTORid:</strong> {me.utorid}
-            </p>
-            <p>
-                <strong>Role:</strong> {role}
-            </p>
-            <p>
-                <strong>Current Points</strong> {me.points}
-            </p>
-            <p>
-                <strong>Verified:</strong> {me.verified ? 'Yes' : 'No'}
-            </p>
-            {me.lastLogin && (
-                <p>
-                    <strong>Last Login:</strong> {new Date(me.lastLogin).toLocaleString()}
-                </p>
-            )}
-        </div>
+        <AppShell title="My Points" subtitle="Account status and loyalty progress.">
+            <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <Card>
+                    <p className="text-sm uppercase text-base-content/60">UTORid</p>
+                    <p className="text-2xl font-semibold">{me.utorid}</p>
+                </Card>
+                <Card>
+                    <p className="text-sm uppercase text-base-content/60">Role</p>
+                    <p className="text-2xl font-semibold capitalize">{me.role}</p>
+                </Card>
+                <Card>
+                    <p className="text-sm uppercase text-base-content/60">Verified</p>
+                    <p className="text-2xl font-semibold">
+                        {me.verified ? "Yes" : "Pending"}
+                    </p>
+                </Card>
+                <Card>
+                    <p className="text-sm uppercase text-base-content/60">Points</p>
+                    <p className="text-3xl font-bold text-primary">{me.points ?? 0}</p>
+                </Card>
+                <Card>
+                    <p className="text-sm uppercase text-base-content/60">Created</p>
+                    <p className="text-lg font-semibold">
+                        {formatDateTime(me.createdAt)}
+                    </p>
+                </Card>
+                <Card>
+                    <p className="text-sm uppercase text-base-content/60">Last login</p>
+                    <p className="text-lg font-semibold">
+                        {formatDateTime(me.lastLogin)}
+                    </p>
+                </Card>
+            </section>
+        </AppShell>
     );
 }

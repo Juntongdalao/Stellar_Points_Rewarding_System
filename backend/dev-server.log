@@ -1,0 +1,5 @@
+
+> stellar-points@0.0.1 dev
+> node src/server.js
+
+StellarPoints backend listening on port 3000

@@ -8,6 +8,7 @@
     "dev": "node src/server.js",
     "start": "node src/server.js",
     "createsuperuser": "node prisma/createsu.js",
+    "seed": "node prisma/seed.js",
     "clean": "rm -rf prisma/dev.db* node_modules package-lock.json prisma/migrations/"
   },
   "author": "Steller Points",

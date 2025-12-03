@@ -1,1 +1,37 @@
-/* Add Later */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: theme("fontFamily.sans");
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light;
+  color: theme("colors.neutral");
+  background-color: theme("colors.surface.50");
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer base {
+  body {
+    @apply min-h-screen bg-gradient-to-b from-surface-50 to-surface-100 text-neutral text-[15px];
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+
+  a {
+    @apply text-primary underline-offset-4 transition hover:text-brand-500;
+  }
+
+  .input,
+  .textarea,
+  .select {
+    @apply bg-surface-50/90 text-neutral focus:bg-white focus:border-brand-200 focus:ring-2 focus:ring-brand-100;
+  }
+}

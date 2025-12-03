@@ -121,6 +121,57 @@ router.get('/events', authenticateToken, requireRole('regular'), async (req, res
     }
 });
 
+// GET /organizer/events (Regular users assigned as organizers)
+router.get('/organizer/events', authenticateToken, requireRole('regular'), async (req, res) => {
+    try {
+        const { name, location, page = '1', limit = '10' } = req.query;
+        const p = Number(page);
+        const l = Number(limit);
+        if (!Number.isInteger(p) || p <= 0) {
+            return res.status(400).json({ error: 'page must be a positive integer' });
+        }
+        if (!Number.isInteger(l) || l <= 0 || l > 100) {
+            return res.status(400).json({ error: 'limit must be between 1 and 100' });
+        }
+        const manager = isManager(req.user);
+        if (!manager) {
+            const assignments = await prisma.eventOrganizer.count({
+                where: { userId: req.user.id },
+            });
+            if (assignments === 0) {
+                return res.status(403).json({ error: 'Not assigned as an organizer.' });
+            }
+        }
+
+        const where = {
+            organizers: { some: { userId: req.user.id } },
+        };
+        if (name) {
+            where.name = { contains: String(name), mode: 'insensitive' };
+        }
+        if (location) {
+            where.location = { contains: String(location), mode: 'insensitive' };
+        }
+        const [count, events] = await Promise.all([
+            prisma.event.count({ where }),
+            prisma.event.findMany({
+                where,
+                orderBy: { startTime: 'asc' },
+                skip: (p - 1) * l,
+                take: l,
+                include: { _count: { select: { guests: true } } },
+            }),
+        ]);
+        const results = events.map((ev) =>
+            listShapeForManager(ev, ev._count.guests)
+        );
+        return res.status(200).json({ count, results });
+    } catch (err) {
+        console.error('Organizer events error:', err);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 // GET for /events/:eventId (Regular or higher & Manager or higher, or an organizer for this event)
 router.get('/events/:eventId', authenticateToken, requireRole('regular'), async (req, res) => {
     try {
@@ -191,7 +242,7 @@ router.patch('/events/:eventId', authenticateToken, requireRole('regular'), asyn
         if (!original) {
             return res.status(404).json({error: 'Event not found.'});
         }
-        const userIsOrganizer = !!(await prisma.eventOrganizer.findFirst({where: { eventId: id, userId: req.user.id }}));
+        const userIsOrganizer = await isOrganizer(id, req.user.id);
         const canEdit = isManager(req.user) || userIsOrganizer;
         if (!canEdit) {
             return res.status(403).json({error: 'Forbidden.'});
@@ -202,6 +253,9 @@ router.patch('/events/:eventId', authenticateToken, requireRole('regular'), asyn
             return res.status(403).json({error: 'Only managers may update points/published.'});
         }
         if (body.published !== undefined) {
+            if (!isManager(req.user)) {
+                return res.status(403).json({ error: 'Only managers may change published.' });
+            }
             if (body.published === null) {}
             else if (body.published !== true) {
                 return res.status(400).json({ error: 'published can only be set to true.' });
@@ -420,7 +474,7 @@ router.post('/events/:eventId/guests', authenticateToken, async (req, res) => {
                 where: {eventId_userId: {eventId, userId: req.user.id}},
             });
             organizer = !!link;
-            if (!organizer || !event.published) {
+            if (!organizer) {
                 return res.status(404).json({error: 'Event not found.'});
             }
         }
@@ -514,15 +568,26 @@ router.delete('/events/:eventId/guests/me', authenticateToken, async (req, res) 
     }
 });
 
-// DELETE for /events/:eventId/guests/:userId (Manager or higher (not organizers for this event))
-router.delete('/events/:eventId/guests/:userId', authenticateToken, requireRole('manager'), async (req, res) => {
+// DELETE for /events/:eventId/guests/:userId (Manager or organizer for this event)
+router.delete('/events/:eventId/guests/:userId', authenticateToken, requireRole('regular'), async (req, res) => {
     try {
         const eventId = Number(req.params.eventId);
         const userId  = Number(req.params.userId);
         if (!Number.isInteger(eventId) || eventId <= 0 || !Number.isInteger(userId) || userId <= 0) {
             return res.status(400).json({error: 'Invalid eventId or userId.'});
         }
-        await prisma.eventGuest.deleteMany({where: {eventId, userId}});
+        const manager = isManager(req.user);
+        let organizer = false;
+        if (!manager) {
+            organizer = await isOrganizer(eventId, req.user.id);
+            if (!organizer) {
+                return res.status(404).json({error: 'Event not found.'});
+            }
+        }
+        const deleted = await prisma.eventGuest.deleteMany({where: {eventId, userId}});
+        if (deleted.count === 0) {
+            return res.status(404).json({error: 'Guest not found.'});
+        }
         return res.status(204).send();
     } catch (err) {
         console.error('DELETE /events/:eventId/guests/:userId failed:', err);

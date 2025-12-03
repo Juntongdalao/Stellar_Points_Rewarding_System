@@ -1,25 +1,30 @@
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { AppShell } from "../components/layout";
+import { Card, DataTable } from "../components/ui";
 import { apiFetch } from "../lib/apiClient";
+import { formatDateTime } from "../lib/date";
 
 export default function ManagerTransactionDetailPage() {
     const { transactionId } = useParams();
     const queryClient = useQueryClient();
-
-    const [actionError, setActionError] = useState("");
-    const [actionMessage, setActionMessage] = useState("");
+    const [activeTab, setActiveTab] = useState("details");
     const [adjustAmount, setAdjustAmount] = useState("");
     const [adjustRemark, setAdjustRemark] = useState("");
+    const [message, setMessage] = useState("");
+    const [error, setError] = useState("");
 
-    const {
-        data: tx,
-        isLoading,
-        isError,
-        error,
-    } = useQuery({
+    const txQuery = useQuery({
         queryKey: ["manager-tx-detail", transactionId],
         queryFn: () => apiFetch(`/transactions/${transactionId}`),
+    });
+
+    const adjustmentsQuery = useQuery({
+        queryKey: ["manager-tx-adjustments", transactionId],
+        enabled: activeTab === "adjustments",
+        queryFn: () =>
+            apiFetch(`/transactions?type=adjustment&relatedId=${transactionId}&page=1&limit=20`),
     });
 
     const suspiciousMutation = useMutation({
@@ -29,281 +34,215 @@ export default function ManagerTransactionDetailPage() {
                 body: { suspicious: newValue },
             }),
         onSuccess: (updated) => {
-            queryClient.setQueryData(
-                ["manager-tx-detail", transactionId],
-                updated
-            );
+            queryClient.setQueryData(["manager-tx-detail", transactionId], updated);
             queryClient.invalidateQueries({ queryKey: ["manager-transactions"] });
-            setActionMessage(
-                updated.suspicious
-                    ? "Marked transaction as suspicious."
-                    : "Marked transaction as not suspicious."
-            );
-            setActionError("");
+            setMessage(updated.suspicious ? "Marked suspicious." : "Cleared suspicious flag.");
+            setError("");
         },
         onError: (err) => {
-            console.error(err);
-            setActionError(err.message || "Failed to update suspicious flag.");
-            setActionMessage("");
+            setError(err.message || "Failed to update suspicious flag.");
+            setMessage("");
         },
     });
 
     const adjustmentMutation = useMutation({
         mutationFn: async () => {
+            const tx = txQuery.data;
             if (!tx) throw new Error("Transaction not loaded yet.");
-            const n = Number(adjustAmount);
-            if (!Number.isInteger(n) || n === 0) {
+            const amount = Number(adjustAmount);
+            if (!Number.isInteger(amount) || amount === 0) {
                 throw new Error("Adjustment amount must be a non-zero integer.");
             }
-            // Backend: POST /transactions with type="adjustment"
             return apiFetch("/transactions", {
                 method: "POST",
                 body: {
                     utorid: tx.utorid,
                     type: "adjustment",
-                    amount: n,
+                    amount,
                     relatedId: tx.id,
                     remark: adjustRemark,
                 },
             });
         },
-        onSuccess: (created) => {
-            setActionMessage(
-                `Created adjustment transaction #${created.id} (amount ${created.amount}).`
-            );
-            setActionError("");
+        onSuccess: () => {
             setAdjustAmount("");
             setAdjustRemark("");
+            setMessage("Created adjustment transaction.");
+            setError("");
             queryClient.invalidateQueries({ queryKey: ["manager-transactions"] });
+            queryClient.invalidateQueries({ queryKey: ["manager-tx-adjustments", transactionId] });
         },
         onError: (err) => {
-            console.error(err);
-            setActionError(err.message || "Failed to create adjustment transaction.");
-            setActionMessage("");
+            setError(err.message || "Failed to create adjustment.");
+            setMessage("");
         },
     });
 
-    function handleToggleSuspicious() {
-        if (!tx || suspiciousMutation.isLoading) return;
-        suspiciousMutation.mutate(!tx.suspicious);
-    }
+    const handleToggle = useCallback(() => {
+        if (txQuery.data) {
+            suspiciousMutation.mutate(!txQuery.data.suspicious);
+        }
+    }, [txQuery.data, suspiciousMutation]);
 
-    function handleSubmitAdjustment(e) {
-        e.preventDefault();
-        setActionError("");
-        setActionMessage("");
-        adjustmentMutation.mutate();
-    }
+    const handleAdjustmentSubmit = useCallback(
+        (e) => {
+            e.preventDefault();
+            setError("");
+            setMessage("");
+            adjustmentMutation.mutate();
+        },
+        [adjustmentMutation],
+    );
 
-    if (isLoading) {
-        return <div style={{ padding: "2rem" }}>Loading transaction…</div>;
-    }
-
-    if (isError) {
+    if (txQuery.isLoading) {
         return (
-            <div style={{ padding: "2rem" }}>
-                <p style={{ color: "red" }}>
-                    Failed to load transaction: {error?.message || "Unknown error"}
-                </p>
-                <p style={{ marginTop: "0.75rem" }}>
-                    <Link to="/manager/transactions">Back to all transactions</Link>
-                </p>
+            <div className="flex min-h-[40vh] items-center justify-center">
+                <span className="loading loading-spinner text-primary" />
             </div>
         );
     }
 
+    if (txQuery.isError) {
+        return (
+            <AppShell title="Transaction">
+                <Card>
+                    <p className="text-error">
+                        Failed to load transaction: {txQuery.error?.message}
+                    </p>
+                    <Link className="btn btn-link px-0" to="/manager/transactions">
+                        Back to transactions
+                    </Link>
+                </Card>
+            </AppShell>
+        );
+    }
+
+    const tx = txQuery.data;
     const promotionList = Array.isArray(tx.promotionIds)
         ? tx.promotionIds.join(", ")
         : "—";
 
+    const adjustmentRows = useMemo(
+        () => adjustmentsQuery.data?.results ?? [],
+        [adjustmentsQuery.data],
+    );
+
+    const adjustmentColumns = [
+        { header: "ID", render: (row) => <span className="font-mono">#{row.id}</span> },
+        { header: "Amount", render: (row) => `${row.amount >= 0 ? "+" : "-"}${Math.abs(row.amount)}` },
+        { header: "Remark", render: (row) => row.remark || "—" },
+    ];
+
     return (
-        <div style={{ padding: "2rem", maxWidth: 720 }}>
-            <h1 style={{ fontSize: "2rem", fontWeight: 700, marginBottom: "0.75rem" }}>
-                Transaction #{tx.id}
-            </h1>
-            <p style={{ marginBottom: "0.75rem" }}>
-                <Link to="/manager/transactions">← Back to all transactions</Link>
-            </p>
-        
-            {actionError && (
-                <p style={{ color: "red", marginBottom: "0.75rem" }}>{actionError}</p>
+        <AppShell title={`Transaction #${tx.id}`} subtitle="Manager review">
+            <Card>
+                <Link className="btn btn-link px-0" to="/manager/transactions">
+                    ← Back to all transactions
+                </Link>
+            </Card>
+            {(message || error) && (
+                <Card>
+                    {message && <div className="alert alert-success">{message}</div>}
+                    {error && <div className="alert alert-error">{error}</div>}
+                </Card>
             )}
-            {actionMessage && (
-                <p style={{ color: "green", marginBottom: "0.75rem" }}>
-                    {actionMessage}
-                </p>
-            )}
-            {/* Details */}
-            <section
-                style={{
-                    marginBottom: "1.5rem",
-                    padding: "1rem",
-                    borderRadius: 12,
-                    border: "1px solid #e5e7eb",
-                    backgroundColor: "#f9fafb",
-            }}
-            >
-                <h2
-                    style={{
-                        fontSize: "1.1rem",
-                        fontWeight: 600,
-                        marginBottom: "0.5rem",
-                    }}
-                >
-                    Transaction Details
-                </h2>
-                <dl
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: "max-content 1fr",
-                        rowGap: "0.25rem",
-                        columnGap: "0.5rem",
-                        fontSize: "0.9rem",
-                }}
-                >
-                    <dt style={{ fontWeight: 600 }}>ID:</dt>
-                    <dd>{tx.id}</dd>
-            
-                    <dt style={{ fontWeight: 600 }}>User UTORid:</dt>
-                    <dd>{tx.utorid}</dd>
-            
-                    <dt style={{ fontWeight: 600 }}>Type:</dt>
-                    <dd>{tx.type}</dd>
-            
-                    <dt style={{ fontWeight: 600 }}>Amount:</dt>
-                    <dd>{tx.amount}</dd>
-            
-                    <dt style={{ fontWeight: 600 }}>Spent:</dt>
-                    <dd>{tx.spent != null ? tx.spent : "—"}</dd>
-            
-                    <dt style={{ fontWeight: 600 }}>Redeemed:</dt>
-                    <dd>{tx.redeemed != null ? tx.redeemed : "—"}</dd>
-            
-                    <dt style={{ fontWeight: 600 }}>Related ID:</dt>
-                    <dd>{tx.relatedId != null ? tx.relatedId : "—"}</dd>
-            
-                    <dt style={{ fontWeight: 600 }}>Suspicious:</dt>
-                    <dd>{tx.suspicious ? "Yes" : "No"}</dd>
-            
-                    <dt style={{ fontWeight: 600 }}>Created By:</dt>
-                    <dd>{tx.createdBy ?? "—"}</dd>
-            
-                    <dt style={{ fontWeight: 600 }}>Processed By:</dt>
-                    <dd>{tx.processedBy ?? "—"}</dd>
-            
-                    <dt style={{ fontWeight: 600 }}>Promotions:</dt>
-                    <dd>{promotionList}</dd>
-            
-                    <dt style={{ fontWeight: 600 }}>Remark:</dt>
-                    <dd>{tx.remark && tx.remark.trim().length > 0 ? tx.remark : "—"}</dd>
-                </dl>
-            </section>
-        
-            {/* Suspicious toggle */}
-            <section style={{ marginBottom: "1.5rem" }}>
-                <h2
-                    style={{
-                        fontSize: "1.05rem",
-                        fontWeight: 600,
-                        marginBottom: "0.5rem",
-                    }}
-                >
-                    Suspicious Flag
-                </h2>
-                <p style={{ marginBottom: "0.5rem", fontSize: "0.9rem" }}>
-                    Mark this transaction as suspicious or clear the flag. The backend will
-                    automatically adjust user points if needed.
-                </p>
-                <button
-                    type="button"
-                    onClick={handleToggleSuspicious}
-                    disabled={suspiciousMutation.isLoading}
-                    style={{
-                        padding: "0.4rem 0.9rem",
-                        borderRadius: 999,
-                        border: "1px solid #b91c1c",
-                        backgroundColor: tx.suspicious ? "#fee2e2" : "#fef9c3",
-                        color: "#7f1d1d",
-                        fontWeight: 500,
-                    }}
-                >
-                    {suspiciousMutation.isLoading
-                        ? "Updating…"
-                        : tx.suspicious
-                        ? "Mark as not suspicious"
-                        : "Mark as suspicious"}
-                </button>
-            </section>
-        
-            {/* Adjustment creation */}
-            <section>
-                <h2
-                    style={{
-                        fontSize: "1.05rem",
-                        fontWeight: 600,
-                        marginBottom: "0.5rem",
-                    }}
-                >
-                    Create Adjustment Transaction
-                </h2>
-                <p style={{ marginBottom: "0.5rem", fontSize: "0.9rem" }}>
-                    Create an adjustment linked to this transaction. Use a positive integer
-                    to add points, or a negative integer to remove points.
-                </p>
-                <form
-                    onSubmit={handleSubmitAdjustment}
-                    style={{ display: "grid", gap: "0.75rem", maxWidth: 420 }}
-                >
-                    <div>
-                        <label
-                            htmlFor="adjustAmount"
-                            style={{ display: "block", marginBottom: 4 }}
-                        >
-                            Adjustment Amount (non-zero integer)
-                        </label>
-                        <input
-                            id="adjustAmount"
-                            type="number"
-                            value={adjustAmount}
-                            onChange={(e) => setAdjustAmount(e.target.value)}
-                            placeholder="e.g., 50 or -50"
-                            style={{ width: "100%" }}
-                        />
-                    </div>
-                    <div>
-                        <label
-                            htmlFor="adjustRemark"
-                            style={{ display: "block", marginBottom: 4 }}
-                        >
-                            Remark (optional)
-                        </label>
-                        <input
-                            id="adjustRemark"
-                            type="text"
-                            value={adjustRemark}
-                            onChange={(e) => setAdjustRemark(e.target.value)}
-                            placeholder="Reason for adjustment"
-                            style={{ width: "100%" }}
-                        />
-                    </div>
+            <Card>
+                <div role="tablist" className="tabs tabs-bordered">
                     <button
-                        type="submit"
-                        disabled={adjustmentMutation.isLoading}
-                        style={{
-                            padding: "0.5rem 1rem",
-                            borderRadius: 999,
-                            border: "1px solid #4f46e5",
-                            backgroundColor: "#4f46e5",
-                            color: "white",
-                            fontWeight: 500,
-                        }}
+                        role="tab"
+                        className={`tab ${activeTab === "details" ? "tab-active" : ""}`}
+                        onClick={() => setActiveTab("details")}
                     >
-                    {adjustmentMutation.isLoading
-                        ? "Creating adjustment…"
-                        : "Create Adjustment"}
+                        Details
                     </button>
-                </form>
-            </section>
-        </div>
+                    <button
+                        role="tab"
+                        className={`tab ${activeTab === "adjustments" ? "tab-active" : ""}`}
+                        onClick={() => setActiveTab("adjustments")}
+                    >
+                        Adjustments
+                    </button>
+                </div>
+                {activeTab === "details" ? (
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <div>
+                            <p className="text-xs text-neutral/60">User</p>
+                            <p className="text-lg font-semibold">{tx.utorid}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-neutral/60">Type</p>
+                            <p className="text-lg font-semibold capitalize">{tx.type}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-neutral/60">Amount</p>
+                            <p className="text-lg font-semibold">{tx.amount}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-neutral/60">Spent</p>
+                            <p className="text-lg font-semibold">{tx.spent ?? "—"}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-neutral/60">Redeemed</p>
+                            <p className="text-lg font-semibold">{tx.redeemed ?? "—"}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-neutral/60">Related ID</p>
+                            <p className="text-lg font-semibold">{tx.relatedId ?? "—"}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-neutral/60">Created By</p>
+                            <p className="text-lg font-semibold">{tx.createdBy ?? "—"}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-neutral/60">Processed By</p>
+                            <p className="text-lg font-semibold">{tx.processedBy ?? "—"}</p>
+                        </div>
+                        <div className="md:col-span-2">
+                            <p className="text-xs text-neutral/60">Promotions</p>
+                            <p className="text-lg font-semibold">{promotionList}</p>
+                        </div>
+                        <div className="md:col-span-2">
+                            <p className="text-xs text-neutral/60">Remark</p>
+                            <p className="text-base">{tx.remark || "—"}</p>
+                        </div>
+                        <div className="md:col-span-2 flex gap-3">
+                            <button
+                                className={`btn ${tx.suspicious ? "btn-error" : "btn-outline"}`}
+                                onClick={handleToggle}
+                                disabled={suspiciousMutation.isLoading}
+                            >
+                                {tx.suspicious ? "Mark as not suspicious" : "Mark as suspicious"}
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="mt-4 space-y-4">
+                        <DataTable columns={adjustmentColumns} data={adjustmentRows} />
+                        <form className="grid gap-3 md:grid-cols-2" onSubmit={handleAdjustmentSubmit}>
+                            <input
+                                className="input input-bordered"
+                                type="number"
+                                placeholder="Adjustment amount"
+                                value={adjustAmount}
+                                onChange={(e) => setAdjustAmount(e.target.value)}
+                            />
+                            <input
+                                className="input input-bordered"
+                                placeholder="Remark (optional)"
+                                value={adjustRemark}
+                                onChange={(e) => setAdjustRemark(e.target.value)}
+                            />
+                            <button
+                                type="submit"
+                                className="btn btn-primary md:col-span-2"
+                                disabled={adjustmentMutation.isLoading}
+                            >
+                                {adjustmentMutation.isLoading ? "Creating…" : "Create adjustment"}
+                            </button>
+                        </form>
+                    </div>
+                )}
+            </Card>
+        </AppShell>
     );
 }

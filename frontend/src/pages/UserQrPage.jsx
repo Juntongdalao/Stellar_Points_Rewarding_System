@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "../lib/apiClient";
 import QRCode from "react-qr-code";
+import { AppShell } from "../components/layout";
+import { Card } from "../components/ui";
+import { apiFetch } from "../lib/apiClient";
 
 export default function UserQrPage() {
     const { data, isLoading, isError, error } = useQuery({
@@ -9,16 +11,22 @@ export default function UserQrPage() {
     });
 
     if (isLoading) {
-        return <div style={{ padding: "2rem" }}>Loading QR code…</div>;
+        return (
+            <div className="flex min-h-[40vh] items-center justify-center">
+                <span className="loading loading-spinner loading-lg text-primary" />
+            </div>
+        );
     }
 
     if (isError) {
         return (
-            <div style={{ padding: "2rem" }}>
-                <p style={{ color: "red" }}>
-                    Failed to load user info: {error?.message || "Unknown error"}
-                </p>
-            </div>
+            <AppShell title="My QR code">
+                <Card>
+                    <p className="text-error">
+                        Failed to load QR data: {error?.message}
+                    </p>
+                </Card>
+            </AppShell>
         );
     }
 
@@ -29,53 +37,42 @@ export default function UserQrPage() {
     });
 
     return (
-        <div style={{ padding: "2rem" }}>
-            <h1 style={{ fontSize: "2rem", fontWeight: 700, marginBottom: "1rem" }}>
-                My QR Code
-            </h1>
-            <p>
-                This QR identifies you as <strong>{me.utorid}</strong>. Cashiers can
-                scan it to start a purchase / transfer.
-            </p>
-            {/* Basic Info */}
-            <div
-                style={{
-                    background: "lightgrey",
-                    marginBottom: "1.5rem",
-                    padding: "1rem",
-                    borderRadius: 12,
-                    border: "1px solid #e5e7eb",
-                    maxWidth: 320,
-                }}
-            >
-                <p>
-                    <strong>UTORid:</strong> {me.utorid}
-                </p>
-                <p>
-                    <strong>User ID:</strong> {me.id}
-                </p>
-                <p>
-                    <strong>Role:</strong> {me.role}
-                </p>
-                <p>
-                    <strong>Current points:</strong> {me.points ?? 0}
-                </p>
+        <AppShell title="My QR code" subtitle="Cashiers scan this to identify you quickly.">
+            <div className="grid gap-6 lg:grid-cols-2">
+                <Card>
+                    <dl className="space-y-3 text-sm">
+                        <div className="flex justify-between">
+                            <dt className="text-base-content/60">UTORid</dt>
+                            <dd className="font-semibold">{me.utorid}</dd>
+                        </div>
+                        <div className="flex justify-between">
+                            <dt className="text-base-content/60">User ID</dt>
+                            <dd className="font-semibold">{me.id}</dd>
+                        </div>
+                        <div className="flex justify-between">
+                            <dt className="text-base-content/60">Role</dt>
+                            <dd className="font-semibold capitalize">{me.role}</dd>
+                        </div>
+                        <div className="flex justify-between">
+                            <dt className="text-base-content/60">Points</dt>
+                            <dd className="font-semibold">{me.points ?? 0}</dd>
+                        </div>
+                    </dl>
+                </Card>
+                <Card className="flex flex-col items-center gap-4">
+                    <div className="rounded-3xl bg-base-200 p-6 shadow-inner">
+                        <QRCode
+                            value={qrPayload}
+                            size={192}
+                            style={{ height: "auto", width: "12rem" }}
+                        />
+                    </div>
+                    <p className="text-sm text-base-content/70 text-center">
+                        Encoded payload:
+                        <code className="ml-2 rounded bg-base-200 px-2 py-1 text-xs">{qrPayload}</code>
+                    </p>
+                </Card>
             </div>
-            {/* Actual QR code */}
-            <div
-                style={{
-                    background: "white",
-                    padding: "1rem",
-                    display: "inline-block",
-                    borderRadius: 16,
-                    boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
-                }}
-            >
-                <QRCode value={qrPayload} size={192} />
-            </div>
-            <p style={{ marginTop: "0.75rem", fontSize: "0.85rem", color: "#6b7280" }}>
-                Encoded payload: <code>{qrPayload}</code>
-            </p>
-        </div>
+        </AppShell>
     );
 }

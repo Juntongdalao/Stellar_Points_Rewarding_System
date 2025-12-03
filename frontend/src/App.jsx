@@ -1,150 +1,198 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/Navbar.jsx";
-import useAuthStore from "./store/authStore";
+import { ApiActivityIndicator, ApiToaster } from "./components/feedback";
+import { AuthGate } from "./components/auth";
 
 import LoginPage from "./pages/LoginPage.jsx";
+import DashboardPage from "./pages/DashboardPage.jsx";
 import MyPointsPage from "./pages/MyPointsPage.jsx";
 import MyTransactionsPage from "./pages/MyTransactionsPage.jsx";
-import CashierCreateTxPage from "./pages/CashierCreateTxPage.jsx";
+import CashierDashboardPage from "./pages/CashierDashboardPage.jsx";
 import ManagerUsersPage from "./pages/ManagerUsersPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import UserQrPage from "./pages/UserQrPage.jsx";
 import UserPromotionsPage from "./pages/UserPromotionsPage.jsx";
+import UserEventsPage from "./pages/UserEventsPage.jsx";
+import EventDetailPage from "./pages/EventDetailPage.jsx";
 import UserTransferPage from "./pages/UserTransferPage.jsx";
 import UserRedeemPage from "./pages/UserRedeemPage";
 import UserRedemptionQrPage from "./pages/UserRedemptionQrPage";
-import CashierProcessRedemptionPage from "./pages/CashierProcessRedemptionPage.jsx";
 import ManagerTransactionsPage from "./pages/ManagerTransactionsPage.jsx";
+import ManagerPromotionsPage from "./pages/ManagerPromotionsPage.jsx";
 import ManagerTransactionDetailPage from "./pages/ManagerTransactionDetailPage.jsx";
-
-const ROLE_ORDER = { regular: 0, cashier: 1, manager: 2, superuser: 3 };
-
-function ProtectedRoute({ children, minRole = "regular" }) {
-  const { user } = useAuthStore();
-  if (!user) return <Navigate to="/login" replace />;
-  if (ROLE_ORDER[user.role] < ROLE_ORDER[minRole]) {
-    return <div>Forbidden: insufficient permissions.</div>;
-  }
-  return children;
-}
+import ManagerEventsPage from "./pages/ManagerEventsPage.jsx";
+import OrganizerEventsPage from "./pages/OrganizerEventsPage.jsx";
+import OrganizerEventDetailPage from "./pages/OrganizerEventDetailPage.jsx";
 
 export default function App() {
   return (
     <div>
+      <ApiActivityIndicator />
+      <ApiToaster />
       <Navbar />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         {/* Regular user views */}
         <Route
+            path="/me"
+            element={
+              <AuthGate minRole="regular">
+                <DashboardPage />
+              </AuthGate>
+            }
+        />
+        <Route
             path="/me/profile"
             element={
-              <ProtectedRoute minRole="regular">
+              <AuthGate minRole="regular">
                 <ProfilePage />
-              </ProtectedRoute>
+              </AuthGate>
             }
         />
         <Route
             path="/me/qr"
             element={
-              <ProtectedRoute minRole="regular">
+              <AuthGate minRole="regular">
                 <UserQrPage />
-              </ProtectedRoute>
+              </AuthGate>
             }
         />
         <Route 
           path="/me/points"
           element={
-            <ProtectedRoute minRole="regular">
+            <AuthGate minRole="regular">
               <MyPointsPage />
-            </ProtectedRoute>
+            </AuthGate>
           }
         />
         <Route
           path="/me/transactions"
           element={
-            <ProtectedRoute minRole="regular">
+            <AuthGate minRole="regular">
               <MyTransactionsPage />
-            </ProtectedRoute>
+            </AuthGate>
           }
         />
         <Route
           path="/me/transfer"
           element={
-            <ProtectedRoute minRole="regular">
+            <AuthGate minRole="regular">
               <UserTransferPage />
-            </ProtectedRoute>
+            </AuthGate>
           }
         />
         <Route
-          path="/me/promotions"
-          element={
-            <ProtectedRoute minRole="regular">
-              <UserPromotionsPage />
-            </ProtectedRoute>
-          }
+            path="/me/promotions"
+            element={
+              <AuthGate minRole="regular">
+                <UserPromotionsPage />
+              </AuthGate>
+            }
+        />
+        <Route
+            path="/events"
+            element={
+              <AuthGate minRole="regular">
+                <UserEventsPage />
+              </AuthGate>
+            }
+        />
+        <Route
+            path="/events/:eventId"
+            element={
+              <AuthGate minRole="regular">
+                <EventDetailPage />
+              </AuthGate>
+            }
         />
         <Route 
           path="/me/redeem" 
           element={
-            <ProtectedRoute minRole="regular">
+            <AuthGate minRole="regular">
               <UserRedeemPage />
-            </ProtectedRoute>
+            </AuthGate>
           }
         />
         <Route 
           path="/me/redemptions/:transactionId" 
           element={
-            <ProtectedRoute minRole="regular">
+            <AuthGate minRole="regular">
               <UserRedemptionQrPage />
-            </ProtectedRoute>
+            </AuthGate>
           } 
         />
         
         {/* Cashier */}
         <Route
-            path="/cashier/transactions/new"
+            path="/cashier"
             element={
-              <ProtectedRoute minRole="cashier">
-                <CashierCreateTxPage />
-              </ProtectedRoute>
+              <AuthGate minRole="cashier">
+                <CashierDashboardPage />
+              </AuthGate>
             }
         />
-        <Route
-            path="/cashier/redemptions/process"
-            element={
-              <ProtectedRoute minRole="cashier">
-                <CashierProcessRedemptionPage />
-              </ProtectedRoute>
-            }
-        />
+        <Route path="/cashier/transactions/new" element={<Navigate to="/cashier" replace />} />
+        <Route path="/cashier/redemptions/process" element={<Navigate to="/cashier" replace />} />
 
         {/* Manager */}
         <Route
             path="/manager/users"
             element={
-              <ProtectedRoute minRole="manager">
+              <AuthGate minRole="manager">
                 <ManagerUsersPage />
-              </ProtectedRoute>
+              </AuthGate>
             }
         />
         <Route
             path="/manager/transactions"
             element={
-              <ProtectedRoute minRole="manager">
+              <AuthGate minRole="manager">
                 <ManagerTransactionsPage />
-              </ProtectedRoute>
+              </AuthGate>
+            }
+        />
+        <Route
+            path="/manager/promotions"
+            element={
+              <AuthGate minRole="manager">
+                <ManagerPromotionsPage />
+              </AuthGate>
             }
         />
         <Route
             path="/manager/transactions/:transactionId"
             element={
-              <ProtectedRoute minRole="manager">
+              <AuthGate minRole="manager">
                 <ManagerTransactionDetailPage />
-              </ProtectedRoute>
+              </AuthGate>
+            }
+        />
+        <Route
+            path="/manager/events"
+            element={
+              <AuthGate minRole="manager">
+                <ManagerEventsPage />
+              </AuthGate>
+            }
+        />
+        <Route
+            path="/organizer/events"
+            element={
+              <AuthGate minRole="regular" requireRoles={["organizer"]}>
+                <OrganizerEventsPage />
+              </AuthGate>
+            }
+        />
+        <Route
+            path="/organizer/events/:eventId"
+            element={
+              <AuthGate minRole="regular" requireRoles={["organizer"]}>
+                <OrganizerEventDetailPage />
+              </AuthGate>
             }
         />
         {/* Default */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<Navigate to="/me" replace />} />
         <Route path="*" element={<div>404 Not Found</div>} />
       </Routes>
     </div>

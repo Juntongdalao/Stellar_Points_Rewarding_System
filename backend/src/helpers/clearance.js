@@ -13,6 +13,8 @@ export function isManagerOrHigher(role) {
     return role.toLowerCase() === 'manager' || role.toLowerCase() === 'superuser';
 }
 
+import prisma from '../db.js';
+
 export async function isOrganizer(eventId, userId) {
     const rel = await prisma.eventOrganizer.findFirst({where: {eventId, userId}});
     return !!rel;
