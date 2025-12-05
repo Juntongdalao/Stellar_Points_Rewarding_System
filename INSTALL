@@ -1,52 +1,456 @@
-Stellar Points Deployment & Setup
-=================================
+StellarPoints Deployment & Setup Instructions
+============================================
 
-Prerequisites
--------------
-1. **Node.js 22.20.0** (matching the CSC309 VM image). Use `nvm install 22.20.0 && nvm use 22.20.0`.
-2. **SQLite 3** (bundled with macOS/Linux, otherwise install via Homebrew/apt).  
-3. **npm 10+** (bundled with Node 22).  
-4. Optional: **PM2** or another process manager if you are hosting the backend long‑running process.  
+## Table of Contents
+1. [Prerequisites](#prerequisites)
+2. [Architecture Overview](#architecture-overview)
+3. [Technology Stack](#technology-stack)
+4. [Local Development Setup](#local-development-setup)
+5. [Production Deployment](#production-deployment)
+6. [Environment Configuration](#environment-configuration)
+7. [Demo Accounts](#demo-accounts)
+8. [Third-Party Services](#third-party-services)
+9. [Testing](#testing)
 
-Backend (Express + Prisma)
---------------------------
-1. `cd backend`
-2. Copy `.env.example` → `.env` (or set `JWT_SECRET`, `PORT`, etc.). The default dev server runs on `http://localhost:3000`.
-3. Install dependencies: `npm install`
-4. Generate / reset the SQLite database and load demo data required by the rubric:  
+---
+
+## Prerequisites
+
+### Required Software
+- **Node.js 22.20.0+** (matching the CSC309 VM image)
+  - Install via: `nvm install 22.20.0 && nvm use 22.20.0`
+  - Or download from: https://nodejs.org/
+- **npm 10+** (bundled with Node.js 22)
+- **SQLite 3** 
+  - macOS/Linux: Usually pre-installed
+  - Windows: Download from https://www.sqlite.org/download.html
+  - Or install via package manager (Homebrew, apt, etc.)
+
+### Optional Tools
+- **Git** for version control
+- **PM2** or another process manager for production hosting
+- **Cypress** for end-to-end testing (installed as dev dependency)
+
+---
+
+## Architecture Overview
+
+StellarPoints is a full-stack web application with a clear separation between frontend and backend:
+
+### System Architecture
+```
+┌─────────────────┐         ┌─────────────────┐
+│   Frontend      │         │    Backend      │
+│   (React/Vite)  │ ◄─────► │  (Express.js)   │
+│   Port: 5173    │  HTTP   │   Port: 3000    │
+└─────────────────┘         └─────────────────┘
+                                      │
+                                      ▼
+                            ┌─────────────────┐
+                            │   SQLite DB     │
+                            │  (Prisma ORM)   │
+                            └─────────────────┘
+```
+
+### Key Components
+- **Frontend**: Single Page Application (SPA) built with React, served statically
+- **Backend**: RESTful API server handling authentication, business logic, and data persistence
+- **Database**: SQLite database managed through Prisma ORM
+- **Authentication**: JWT-based token authentication with role-based access control (RBAC)
+- **State Management**: Zustand for client-side state, React Query for server state
+
+### Role-Based Access Control
+The system supports five user roles with different permission levels:
+1. **Regular Users**: Basic points management, events, promotions
+2. **Cashiers**: Transaction processing, user creation
+3. **Event Organizers**: Event management, point awards
+4. **Managers**: Full system management (users, transactions, promotions, events)
+5. **Superusers**: Complete administrative access
+
+---
+
+## Technology Stack
+
+### Frontend
+- **React 18+**: UI framework
+- **Vite**: Build tool and dev server
+- **Tailwind CSS**: Utility-first CSS framework
+- **DaisyUI**: Component library built on Tailwind
+- **Zustand**: Lightweight state management
+- **React Query**: Server state management and caching
+- **React Router**: Client-side routing
+- **Google Maps JavaScript API**: Interactive map visualization
+
+### Backend
+- **Node.js 22+**: Runtime environment
+- **Express.js**: Web framework
+- **Prisma**: ORM for database management
+- **SQLite**: Relational database
+- **JWT (jsonwebtoken)**: Authentication tokens
+- **bcrypt**: Password hashing
+- **CORS**: Cross-origin resource sharing
+- **@googlemaps/google-maps-services-js**: Geocoding API client
+
+### Development Tools
+- **Cypress**: End-to-end testing
+- **ESLint**: Code linting
+- **PostCSS**: CSS processing
+
+---
+
+## Local Development Setup
+
+### Step 1: Clone and Navigate
+```bash
+git clone <repository-url>
+cd CSC309Project
+```
+
+### Step 2: Backend Setup
+
+1. **Navigate to backend directory:**
    ```bash
+   cd backend
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables:**
+   - Create a `.env` file in the `backend/` directory
+   - Copy from `.env.example` if available, or create with:
+     ```env
+     JWT_SECRET=your-secret-key-here-minimum-32-characters
+     PORT=3000
+     GOOGLE_MAPS_API_KEY=your-google-maps-api-key (optional, for geocoding)
+     GOOGLE_GEOCODING_API_KEY=your-google-geocoding-api-key (optional, alternative to GOOGLE_MAPS_API_KEY)
+     SEED_PASSWORD=DevStrongPass! (optional, defaults to DevStrongPass!)
+     ```
+   - Generate a secure JWT_SECRET: `openssl rand -base64 32`
+
+4. **Initialize database and seed data:**
+   ```bash
+   # Generate Prisma Client
+   npx prisma generate
+   
+   # Push database schema (creates tables)
+   npx prisma db push
+   
+   # Seed database with demo data
    npm run seed
    ```
-   This creates 15 demo accounts (superuser, managers, cashiers, organizers, suspicious users), 5 events, 5 promotions, and 30+ transactions so TAs can immediately test pagination-heavy pages.  
-5. Start the API: `npm run dev`
+   This creates:
+   - 30 demo users (superuser, managers, cashiers, organizers, regular users)
+   - 30 promotions
+   - 30 events
+   - 120+ transactions
 
-Frontend (Vite + React + DaisyUI)
----------------------------------
-1. `cd frontend`
-2. Install dependencies: `npm install` (requires Node 20.19+ or 22.12+ as per Vite’s engines).
-3. Copy `.env.example` → `.env` if you want to override `VITE_API_BASE_URL`. By default the frontend talks to `http://localhost:3000`.
-4. Development server: `npm run dev` (served at `http://localhost:5173`).
-5. Production build: `npm run build` → deploy the `dist/` contents (e.g., Netlify, Vercel, or a static bucket proxied behind Nginx). Point the backend’s `cors` middleware to the deployed origin.
-
-End-to-End Smoke Tests
-----------------------
-1. Ensure both backend (`npm run dev` in `/backend`) and frontend (`npm run dev` in `/frontend`) are running locally.
-2. From `frontend/`, run Cypress:
+5. **Start the backend server:**
    ```bash
-   npm run test:e2e        # headless
-   npm run test:e2e:open   # headed Test Runner
+   npm run dev
    ```
-   Cypress logs in through the API, verifies auth gating, and exercises the organizer “award all guests” flow.  
-   Use env vars (`CYPRESS_BASE_URL`, `CYPRESS_API_URL`, etc.) if your servers are not running on the defaults.
+   The API will be available at `http://localhost:3000`
 
-Deployment Notes
-----------------
-* **Backend**: Any Node 22 host works (Render, Fly.io, Railway, etc.). Point the reverse proxy at `PORT` (default 3000) and make sure the SQLite file (`backend/prisma/dev.db`) is persisted (mount a volume or switch Prisma to Postgres if needed).
-* **Frontend**: Deploy the static build to Netlify/Vercel/S3+CloudFront. Set `VITE_API_BASE_URL` at build time so the app calls the deployed API instead of localhost.
-* **Docs & Credentials**: Demo password for all seeded accounts is `DevStrongPass!`. Primary logins:
-  - Superuser: `super123`
-  - Manager: `manager01`
-  - Cashier: `cashier01`
-  - Organizer: `organizer01`
+### Step 3: Frontend Setup
 
-PM2 / systemd snippets can be added later if you standardize on a specific host. For CSC309 deliverables, publishing both servers and providing the public URL in WEBSITE is sufficient.
+1. **Navigate to frontend directory:**
+   ```bash
+   cd ../frontend
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables (optional):**
+   - Create a `.env` file in the `frontend/` directory
+   - Add if you need to override defaults:
+     ```env
+     VITE_API_BASE_URL=http://localhost:3000
+     VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key (for map features)
+     ```
+   - By default, the frontend connects to `http://localhost:3000`
+
+4. **Start the development server:**
+   ```bash
+   npm run dev
+   ```
+   The frontend will be available at `http://localhost:5173`
+
+### Step 4: Verify Setup
+
+1. Open `http://localhost:5173` in your browser
+2. Log in with demo credentials (see [Demo Accounts](#demo-accounts) section)
+3. Verify you can navigate through the application
+
+---
+
+## Production Deployment
+
+### Deployment Platform: Railway
+
+StellarPoints is deployed on Railway with automatic database initialization.
+
+**Live Application URL:** https://stellarfrontend-production.up.railway.app/
+
+### Backend Deployment (Railway)
+
+1. **Connect Repository:**
+   - Create a new Railway project
+   - Connect your GitHub repository
+   - Select the `backend/` directory as the root
+
+2. **Configure Environment Variables:**
+   In Railway dashboard → Backend Service → Variables, set:
+   ```
+   JWT_SECRET=<your-secure-secret-key>
+   GOOGLE_MAPS_API_KEY=<your-google-maps-api-key> (optional)
+   GOOGLE_GEOCODING_API_KEY=<your-geocoding-api-key> (optional)
+   SEED_PASSWORD=<password-for-seeded-users> (optional)
+   PORT=8080 (Railway sets this automatically, but can override)
+   ```
+
+3. **Build Configuration:**
+   - Railway automatically detects Node.js projects
+   - Build command: `npm install` (runs automatically)
+   - Start command: `npm start` (runs `node src/server.js`)
+
+4. **Database Initialization:**
+   - The backend automatically initializes the database on startup
+   - `src/initDb.js` runs `prisma generate`, `prisma db push`, and `npm run seed`
+   - Database is recreated on each deployment (Railway's filesystem is ephemeral)
+
+5. **Get Backend URL:**
+   - Railway provides a public URL (e.g., `https://stellarbackend-production.up.railway.app`)
+   - Copy this URL for frontend configuration
+
+### Frontend Deployment (Railway)
+
+1. **Create New Service:**
+   - In the same Railway project, add a new service
+   - Select the `frontend/` directory as the root
+
+2. **Configure Environment Variables:**
+   In Railway dashboard → Frontend Service → Variables, set:
+   ```
+   VITE_API_BASE_URL=https://your-backend-url.railway.app
+   VITE_GOOGLE_MAPS_API_KEY=<your-google-maps-api-key> (for map features)
+   ```
+   **Important:** These must be set BEFORE building, as Vite embeds env vars at build time.
+
+3. **Build Configuration:**
+   - Railway detects Vite projects automatically
+   - Build command: `npm run build` (creates `dist/` folder)
+   - Start command: `npx serve -s dist -l 8080` (serves static files)
+   - Or use Railway's static site hosting if available
+
+4. **Redeploy After Env Changes:**
+   - If you change `VITE_*` variables, you MUST redeploy
+   - Vite embeds environment variables at build time, not runtime
+
+### Alternative Deployment Options
+
+**Backend:**
+- Render, Fly.io, Heroku, DigitalOcean App Platform
+- Ensure Node.js 22+ is supported
+- Configure CORS to allow your frontend domain
+- Set up persistent storage for SQLite (or migrate to PostgreSQL)
+
+**Frontend:**
+- Netlify, Vercel, Cloudflare Pages, AWS S3 + CloudFront
+- Set `VITE_API_BASE_URL` in build environment variables
+- Deploy the `dist/` folder as a static site
+
+---
+
+## Environment Configuration
+
+### Backend Environment Variables
+
+| Variable | Required | Description | Default |
+|----------|----------|-------------|---------|
+| `JWT_SECRET` | **Yes** | Secret key for JWT token signing | None (must be set) |
+| `PORT` | No | Server port number | `3000` |
+| `GOOGLE_MAPS_API_KEY` | No | Google Maps API key for geocoding | None (geocoding disabled) |
+| `GOOGLE_GEOCODING_API_KEY` | No | Alternative Google Geocoding API key | Uses `GOOGLE_MAPS_API_KEY` if set |
+| `SEED_PASSWORD` | No | Password for all seeded demo users | `DevStrongPass!` |
+| `NODE_ENV` | No | Environment mode (`production`/`development`) | `development` |
+
+### Frontend Environment Variables
+
+| Variable | Required | Description | Default |
+|----------|----------|-------------|---------|
+| `VITE_API_BASE_URL` | No | Backend API base URL | `http://localhost:3000` |
+| `VITE_GOOGLE_MAPS_API_KEY` | No | Google Maps JavaScript API key | None (map features disabled) |
+
+**Note:** All frontend environment variables must be prefixed with `VITE_` to be exposed to the client code.
+
+---
+
+## Demo Accounts
+
+All demo accounts share the same password: **`1uta716eejnoa161vdsj3h2v1zvihny9`**
+
+### Superuser
+- **UTORid:** `superman`
+- **Role:** Superuser
+- **Access:** Full system administration
+
+### Managers
+- **UTORid:** `gandalf01` (Gandalf the Grey)
+- **UTORid:** `yoda1234` (Master Yoda)
+- **Role:** Manager
+- **Access:** User management, transaction management, promotion management, event management
+
+### Cashiers
+- **UTORid:** `hermione` (Hermione Granger)
+- **UTORid:** `katniss1` (Katniss Everdeen)
+- **UTORid:** `frodo123` (Frodo Baggins)
+- **Role:** Cashier
+- **Access:** Transaction processing, user creation, redemption processing
+
+### Event Organizers (Regular Users)
+- **UTORid:** `harrypot` (Harry Potter)
+- **UTORid:** `luke1234` (Luke Skywalker)
+- **UTORid:** `elrond01` (Elrond Half-elven)
+- **UTORid:** `tonystar` (Tony Stark)
+- **Role:** Regular (with organizer privileges)
+- **Access:** Event management for their events, point awards
+
+### Regular Users
+- **UTORid:** `neville1` (Neville Longbottom)
+- **UTORid:** `luna1234` (Luna Lovegood)
+- **UTORid:** `ron12345` (Ron Weasley)
+- **UTORid:** `gimli123` (Gimli Son of Glóin)
+- **UTORid:** `legolas1` (Legolas Greenleaf)
+- **UTORid:** `aragorn1` (Aragorn Elessar)
+- And 18+ more regular users (see `backend/prisma/seed.js` for complete list)
+- **Role:** Regular
+- **Access:** Points management, events, promotions, transfers, redemptions
+
+### Special Test Accounts
+- **UTORid:** `suspicious` (Severus Snape) - Marked as suspicious user
+- **UTORid:** `newbie01` (Newt Scamander) - Unverified user
+
+---
+
+## Third-Party Services
+
+### Google Maps Platform
+
+**Services Used:**
+1. **Google Maps JavaScript API**
+   - Purpose: Interactive map visualization for events
+   - Usage: Frontend displays all events on a clickable map
+   - API Key Location: `VITE_GOOGLE_MAPS_API_KEY` (frontend)
+
+2. **Google Geocoding API**
+   - Purpose: Convert event addresses to latitude/longitude coordinates
+   - Usage: Backend automatically geocodes event locations when created/updated
+   - API Key Location: `GOOGLE_MAPS_API_KEY` or `GOOGLE_GEOCODING_API_KEY` (backend)
+
+**Setup Instructions:**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select existing
+3. Enable the following APIs:
+   - Maps JavaScript API
+   - Geocoding API
+4. Create API keys for each service
+5. Restrict API keys to your domains (production) or allow localhost (development)
+6. Add keys to environment variables as specified above
+
+**Cost:** Free tier includes $200/month credit, sufficient for development and moderate production use.
+
+---
+
+## Testing
+
+### End-to-End Testing (Cypress)
+
+1. **Prerequisites:**
+   - Both backend and frontend servers must be running locally
+   - Backend: `cd backend && npm run dev`
+   - Frontend: `cd frontend && npm run dev`
+
+2. **Run Tests:**
+   ```bash
+   cd frontend
+   
+   # Headless mode (CI-friendly)
+   npm run test:e2e
+   
+   # Interactive mode (opens Cypress Test Runner)
+   npm run test:e2e:open
+   ```
+
+3. **Test Coverage:**
+   - Authentication flow
+   - Role-based access control (auth gating)
+   - Event organizer "award all guests" functionality
+   - Additional test cases as defined in `frontend/cypress/e2e/`
+
+4. **Environment Variables:**
+   - Set `CYPRESS_BASE_URL` if frontend is not on `http://localhost:5173`
+   - Set `CYPRESS_API_URL` if backend is not on `http://localhost:3000`
+
+### Unit Testing
+
+```bash
+# Frontend unit tests
+cd frontend
+npm test
+
+# Backend tests (if configured)
+cd backend
+npm test
+```
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Database not found / Tables don't exist:**
+   - Run: `cd backend && npx prisma db push && npm run seed`
+
+2. **CORS errors:**
+   - Ensure backend `cors` middleware allows your frontend origin
+   - Check `backend/src/app.js` CORS configuration
+
+3. **Authentication fails:**
+   - Verify `JWT_SECRET` is set in backend environment
+   - Check that user exists in database (run seed script)
+
+4. **Maps not loading:**
+   - Verify `VITE_GOOGLE_MAPS_API_KEY` is set in frontend
+   - Check Google Cloud Console for API restrictions
+   - Ensure Maps JavaScript API is enabled
+
+5. **Geocoding not working:**
+   - Verify `GOOGLE_MAPS_API_KEY` or `GOOGLE_GEOCODING_API_KEY` is set in backend
+   - Check that Geocoding API is enabled in Google Cloud Console
+
+6. **Frontend can't connect to backend:**
+   - Verify `VITE_API_BASE_URL` is set correctly
+   - Check backend is running and accessible
+   - Verify CORS is configured correctly
+
+---
+
+## Additional Resources
+
+- **Prisma Documentation:** https://www.prisma.io/docs
+- **React Documentation:** https://react.dev
+- **Vite Documentation:** https://vite.dev
+- **Railway Documentation:** https://docs.railway.app
+- **Google Maps Platform:** https://developers.google.com/maps
+
+---
+
+## Support
+
+For issues or questions, refer to the project repository or contact the development team.
