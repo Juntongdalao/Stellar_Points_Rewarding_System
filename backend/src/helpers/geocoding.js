@@ -30,6 +30,7 @@ export async function geocodeAddress(address) {
         if (enhancedAddress.toLowerCase().includes('campus-wide')) {
             enhancedAddress = 'University of Toronto, Toronto, ON, Canada';
         } else {
+            // Only enhance known campus locations - let Google handle everything else
             const campusLocations = [
                 'Hart House', 'Sid Smith', 'Bahen Centre', 'Innis', 'Robarts',
                 'Myhal Centre', 'Athletic Centre', 'Convocation Hall', 'Back Campus'
@@ -38,14 +39,12 @@ export async function geocodeAddress(address) {
                 enhancedAddress.toLowerCase().includes(loc.toLowerCase())
             );
             
+            // Only add UofT context for known campus locations that don't already have it
             if (isCampusLocation && !enhancedAddress.toLowerCase().includes('university of toronto')) {
                 enhancedAddress = `${enhancedAddress}, University of Toronto, Toronto, ON, Canada`;
-            } else if (!enhancedAddress.toLowerCase().includes('toronto') && 
-                       !enhancedAddress.toLowerCase().includes('canada') &&
-                       !enhancedAddress.toLowerCase().includes('utoronto')) {
-                // Add Toronto context for other locations
-                enhancedAddress = `${enhancedAddress}, Toronto, ON, Canada`;
             }
+            // For all other addresses, let Google Geocoding API handle it directly
+            // Google is smart enough to geocode "Reykjavik, Iceland", "Paris, France", etc. without help
         }
         
         const response = await client.geocode({
