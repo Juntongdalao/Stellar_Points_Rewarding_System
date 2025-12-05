@@ -10,7 +10,7 @@ A comprehensive points-based reward system for managing user transactions, event
 
 **Superuser Account:**
 - **UTORid:** `superman`
-- **Password:** `Sp127@336abc`
+- **Password:** `1uta716eejnoa161vdsj3h2v1zvihny9`
 
 > **Note:** The demo database includes 30 users, 30 events, 30 promotions, and 120+ transactions. All demo users share the same password as the superuser account above.
 
