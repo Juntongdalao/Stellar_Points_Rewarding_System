@@ -22,9 +22,10 @@ const app = express();
 
 // Global middlewares
 
-// Frontend on another port) can access the backend
+// CORS: Allow all origins (required for Railway deployment)
+// This allows both localhost (dev) and Railway frontend (production) to access the backend
 app.use(cors({
-    origin: 'http://localhost:5173',  // Port when run npm run dev
+    origin: true,  // Allow all origins - Railway frontend is at a different domain
     methods: ['GET','POST','PUT','DELETE','PATCH'],
     allowedHeaders: ['Content-Type','Authorization'],
     credentials: true,
