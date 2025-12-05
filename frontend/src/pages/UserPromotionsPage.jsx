@@ -75,7 +75,12 @@ export default function UserPromotionsPage() {
                                     className="rounded-2xl border border-base-200 bg-base-100 p-5 shadow-card"
                                 >
                                     <div className="flex items-start justify-between">
-                                        <h2 className="text-lg font-semibold">{promo.name}</h2>
+                                        <div>
+                                            <h2 className="text-lg font-semibold">{promo.name}</h2>
+                                            <div className="mt-2 inline-block rounded border-2 border-brand-300 bg-brand-50 px-2 py-1">
+                                                <span className="text-xs font-bold text-brand-700 font-mono">ID: #{promo.id}</span>
+                                            </div>
+                                        </div>
                                         <span className="badge badge-soft capitalize">{promo.type}</span>
                                     </div>
                                     <p className="mt-2 text-sm text-base-content/70">

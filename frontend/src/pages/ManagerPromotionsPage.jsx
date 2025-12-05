@@ -128,6 +128,7 @@ export default function ManagerPromotionsPage() {
 
     const columns = useMemo(
         () => [
+            { header: "ID", render: (row) => <span className="font-mono text-sm">#{row.id}</span> },
             { header: "Name", render: (row) => row.name },
             { header: "Type", render: (row) => <span className="badge badge-soft capitalize">{row.type}</span> },
             { header: "Start", render: (row) => (row.startTime ? formatDateTime(row.startTime) : "—") },
